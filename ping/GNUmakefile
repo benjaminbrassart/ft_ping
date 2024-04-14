@@ -6,7 +6,7 @@
 #    By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/04/14 15:01:33 by bbrassar          #+#    #+#              #
-#    Updated: 2024/04/14 16:24:35 by bbrassar         ###   ########.fr        #
+#    Updated: 2024/04/14 17:16:06 by bbrassar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -33,7 +33,7 @@ all: $(NAME)
 clean:
 	$(RM) $(OBJ) $(DEP)
 
-fclean:
+fclean: clean
 	$(RM) $(NAME)
 
 re: fclean
