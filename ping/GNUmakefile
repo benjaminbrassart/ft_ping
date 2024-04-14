@@ -6,7 +6,7 @@
 #    By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/04/14 15:01:33 by bbrassar          #+#    #+#              #
-#    Updated: 2024/04/14 15:28:29 by bbrassar         ###   ########.fr        #
+#    Updated: 2024/04/14 16:19:08 by bbrassar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -22,7 +22,7 @@ $(NAME): $(OBJ)
 
 $(OBJ): .EXTRA_PREREQS = $(MAKEFILE)
 $(OBJ): %.c.o: %.c
-	$(CC) -Wall -Werror -Wextra -Wconversion -MMD -MP -I. -std=c99 $(CFLAGS) -c $< -o $@
+	$(CC) -Wall -Werror -Wextra -Wconversion -MMD -MP -I. -std=c99 -D_POSIX_C_SOURCE=200112L $(CFLAGS) -c $< -o $@
 
 -include $(DEP)
 
