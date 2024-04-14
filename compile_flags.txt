@@ -1,0 +1,6 @@
+-Wall
+-Werror
+-Wextra
+-Wconversion
+-std=c99
+-I.
