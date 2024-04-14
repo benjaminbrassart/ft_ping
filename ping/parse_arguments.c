@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:17:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/14 15:29:01 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/14 15:36:02 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,23 +29,21 @@ int parse_arguments(struct ft_ping *ping, int argc, char const *argv[])
 				ping->flag_help = 1;
 				return 0;
 			} else {
-				fprintf(stderr,
-					"ft_ping: unknown option '%s'\n",
-					argv[i]);
+				ERR("unknown option '%s'", argv[i]);
 				return -1;
 			}
 		} else {
 			if (ping->host == NULL) {
 				ping->host = argv[i];
 			} else {
-				fprintf(stderr, "ft_ping: too many hosts\n");
+				ERR("too many hosts");
 				return -1;
 			}
 		}
 	}
 
 	if (ping->host == NULL) {
-		fprintf(stderr, "ft_ping: missing host\n");
+		ERR("missing host");
 		return -1;
 	}
 

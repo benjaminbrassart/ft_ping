@@ -6,15 +6,18 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:18:17 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/14 15:26:41 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/14 15:35:12 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
+#define ERR(Format, ...) \
+	(fprintf(stderr, "ft_ping: " Format "\n", ## __VA_ARGS__))
+
 struct ft_ping {
-	unsigned flag_verbose: 1;
-	unsigned flag_help: 1;
+	unsigned flag_verbose : 1;
+	unsigned flag_help : 1;
 	char const *host;
 };
 
