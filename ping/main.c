@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/14 19:16:25 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/18 22:16:14 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -197,11 +197,7 @@ static void _receive_ping_packet(struct ft_ping const *ping, int fd)
 		printf("%ld bytes from %s: %s\n",
 		       rr - (ssize_t)sizeof(struct iphdr), src_ip, type_str);
 		if (ping->flag_verbose) {
-			printf("IP Hdr Dump:\n");
-			printf("\n");
-			printf("Vr HL TOS  Len   ID Flg  off TTL Pro  cks      Src      Dst     Data\n");
-			printf("\n");
-			printf("ICMP: type %hhu, code %hhu, size %hu, id 0x%04hx, seq 0x%04hx\n", response.icmp.type, response.icmp.code, response.ip.tot_len, 0, 0);
+			dump_header(&response.ip, &response.icmp);
 		}
 	}
 }

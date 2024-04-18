@@ -6,14 +6,14 @@
 #    By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/04/14 15:01:33 by bbrassar          #+#    #+#              #
-#    Updated: 2024/04/14 17:16:06 by bbrassar         ###   ########.fr        #
+#    Updated: 2024/04/18 22:16:25 by bbrassar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 MAKEFILE := $(lastword $(MAKEFILE_LIST))
 NAME := ft_ping
 
-SRC := main.c parse_arguments.c resolve_hostname.c create_socket.c
+SRC := main.c parse_arguments.c resolve_hostname.c create_socket.c dump_header.c
 OBJ := $(SRC:.c=.c.o)
 DEP := $(OBJ:.o=.d)
 
