@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/18 22:16:14 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/19 10:07:49 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@
 #include <netinet/ip_icmp.h>
 #include <unistd.h>
 
-#define TTL ((uint8_t)10U)
+#define DEFAULT_TTL ((uint8_t)64U)
 
 struct icmp_packet {
 	struct icmphdr hdr;
@@ -56,7 +56,7 @@ int main(int argc, char const *argv[])
 
 	int fd;
 
-	fd = create_socket(TTL);
+	fd = create_socket(DEFAULT_TTL);
 	if (fd == -1) {
 		return EXIT_FAILURE;
 	}
