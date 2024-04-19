@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/19 10:07:49 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/19 10:13:57 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -88,25 +88,6 @@ static void _handle_sigalrm(int sig)
 	_SEND = 1;
 }
 
-static uint16_t _icmp_checksum(void const *buffer, size_t len)
-{
-	uint16_t const *addr = buffer;
-	uint32_t sum = 0;
-	size_t count = len;
-
-	while (count > 1) {
-		sum += *addr;
-		addr++;
-		count -= 2;
-	}
-
-	if (count > 0) {
-		sum += *(uint8_t const *)addr;
-	}
-
-	return (uint16_t) ~((sum & 0xffff) + (sum >> 16));
-}
-
 static void _send_ping_packet(struct ft_ping const *ping, int fd)
 {
 	static uint16_t seq = 0;
@@ -122,7 +103,7 @@ static void _send_ping_packet(struct ft_ping const *ping, int fd)
 		packet.data[i] = i;
 	}
 
-	packet.hdr.checksum = _icmp_checksum(&packet, sizeof(packet));
+	packet.hdr.checksum = icmp_checksum(&packet, sizeof(packet));
 
 	ssize_t rr;
 
@@ -177,8 +158,8 @@ static void _receive_ping_packet(struct ft_ping const *ping, int fd)
 		inet_ntop(AF_INET, &response.ip.saddr, src_ip, sizeof(src_ip));
 
 		printf("%ld bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms\n",
-		       rr, src_ip, response.icmp.un.echo.sequence,
-		       response.ip.ttl, 0.000f);
+		       rr - (ssize_t)sizeof(struct iphdr), src_ip,
+		       response.icmp.un.echo.sequence, response.ip.ttl, 0.000f);
 	} else {
 		char const *type_str;
 
