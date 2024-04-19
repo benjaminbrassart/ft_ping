@@ -53,3 +53,5 @@ dkms.conf
 
 # Project-specific
 /ping/ft_ping
+
+/.vagrant/
