@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/19 13:16:08 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/19 13:24:36 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -296,9 +296,10 @@ static void _print_roundtrip(struct ft_ping const *ping)
 	}
 
 	double time_avg = time_total / (double)ping->packets_received.size;
-	double time_stddev =
-		sqrt(time_total_squared / (double)ping->packets_received.size -
-		     (time_avg * time_avg));
+	double time_stddev = ft_sqrt(
+		time_total_squared / (double)ping->packets_received.size -
+			(time_avg * time_avg),
+		0.0005);
 
 	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n",
 	       time_min, time_max, time_avg, time_stddev);

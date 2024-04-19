@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:18:17 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/19 12:55:19 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/19 13:24:21 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -72,3 +72,8 @@ void dump_header(struct iphdr const *ip, struct icmphdr const *icmp);
  * Return the ICMP checksum for a given buffer
  */
 uint16_t icmp_checksum(void const *buffer, size_t len);
+
+/**
+ * Calculate the square root of a number using the Babylonian method
+ */
+double ft_sqrt(double n, double precision);
