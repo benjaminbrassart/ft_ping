@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/19 14:14:13 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/19 18:14:51 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -347,11 +347,47 @@ static int ft_ping(struct ft_ping *ping, int fd)
 
 	signal(SIGINT, _handle_sigint);
 
+	timer_t timer_id;
+	struct sigevent sev = {
+		.sigev_notify = SIGEV_SIGNAL,
+		.sigev_signo = SIGALRM,
+	};
+
+	if (timer_create(CLOCK_MONOTONIC, &sev, &timer_id) == -1) {
+		return EXIT_FAILURE;
+	}
+
+	struct itimerspec const timer_conf = {
+		.it_interval = {
+			.tv_sec = 1,
+			.tv_nsec = 0,
+		},
+		.it_value = {
+			.tv_sec = 1,
+			.tv_nsec = 0,
+		},
+	};
+
+	if (timer_settime(timer_id, 0, &timer_conf, NULL) == -1) {
+		status = EXIT_FAILURE;
+		goto _delete_timer;
+	}
+
+	struct sigaction sa = {};
+
+	sa.sa_flags = 0;
+	sa.sa_restorer = NULL;
+	sigemptyset(&sa.sa_mask);
+
+	sa.sa_handler = _handle_sigalrm;
+	sigaction(SIGALRM, &sa, NULL);
+
+	sa.sa_handler = _handle_sigint;
+	sigaction(SIGINT, &sa, NULL);
+
 	while (_RUN) {
 		if (_SEND) {
 			_SEND = 0;
-			alarm(1U);
-			signal(SIGALRM, _handle_sigalrm);
 			if (_send_ping_packet(ping, fd) == -1) {
 				status = EXIT_FAILURE;
 				goto _cleanup;
@@ -366,9 +402,11 @@ static int ft_ping(struct ft_ping *ping, int fd)
 	_print_stats(ping);
 
 _cleanup:
-	alarm(0U);
 	_packet_list_free(&ping->packets_received);
 	_packet_list_free(&ping->packets_sent);
+
+_delete_timer:
+	timer_delete(timer_id);
 
 	return status;
 }
