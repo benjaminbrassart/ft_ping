@@ -6,13 +6,14 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:18:17 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/19 10:10:24 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/19 12:55:19 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
 #include <stdint.h>
+#include <time.h>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -21,12 +22,30 @@
 #define ERR(Format, ...) \
 	(fprintf(stderr, "ft_ping: " Format "\n", ##__VA_ARGS__))
 
+struct packet_list_node {
+	struct packet_list_node *next;
+	struct packet_list_node *prev;
+	uint16_t seq;
+	union {
+		struct timespec send_time;
+		double recv_delta;
+	};
+};
+
+struct packet_list {
+	struct packet_list_node *first;
+	struct packet_list_node *last;
+	size_t size;
+};
+
 struct ft_ping {
 	unsigned flag_verbose : 1;
 	unsigned flag_help : 1;
 	char const *host;
 	struct sockaddr_in addr;
 	char saddr[INET_ADDRSTRLEN];
+	struct packet_list packets_sent;
+	struct packet_list packets_received;
 };
 
 /**
