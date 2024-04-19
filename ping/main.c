@@ -6,14 +6,13 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/19 13:24:36 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/19 14:14:13 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ft_ping.h"
 
 #include <errno.h>
-#include <math.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -185,7 +184,8 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 		return 0;
 	}
 
-	if (response.icmp.type == ICMP_ECHOREPLY) {
+	switch (response.icmp.type) {
+	case ICMP_ECHOREPLY: {
 		if (response.icmp.un.echo.id != (uint16_t)getpid()) {
 			return 0;
 		}
@@ -245,17 +245,13 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 		       rr - (ssize_t)sizeof(struct iphdr), src_ip,
 		       response.icmp.un.echo.sequence, response.ip.ttl,
 		       it->recv_delta);
-	} else {
-		char const *type_str;
-
-		switch (response.icmp.type) {
-		case ICMP_TIME_EXCEEDED:
-			type_str = "Time to live exceeded";
-			break;
-		default:
-			return -1;
-		}
-
+		break;
+	}
+	case ICMP_ECHO:
+		break;
+	default: {
+		char const *type_str = icmp_description(response.icmp.type,
+							response.icmp.code);
 		char src_ip[INET_ADDRSTRLEN];
 
 		inet_ntop(AF_INET, &response.ip.saddr, src_ip, sizeof(src_ip));
@@ -265,6 +261,8 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 		if (ping->flag_verbose) {
 			dump_header(&response.ip, &response.icmp);
 		}
+		break;
+	}
 	}
 
 	return 0;

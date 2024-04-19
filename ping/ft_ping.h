@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:18:17 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/19 13:24:21 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/19 13:46:26 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,3 +77,8 @@ uint16_t icmp_checksum(void const *buffer, size_t len);
  * Calculate the square root of a number using the Babylonian method
  */
 double ft_sqrt(double n, double precision);
+
+/**
+ * Get the description of an ICMP type/code pair
+ */
+char const *icmp_description(uint8_t type, uint8_t code);
