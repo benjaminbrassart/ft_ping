@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:18:17 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 16:06:15 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 18:52:10 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,6 +56,7 @@ struct ft_ping {
 		// sum of squared received packets time deltas for calculating stddev
 		double time_sum_squared;
 		size_t recv_count;
+		size_t dup_count;
 	} stats;
 };
 
@@ -83,7 +84,7 @@ void dump_header(struct iphdr const *ip, struct icmphdr const *icmp,
 /**
  * Return the ICMP checksum for a given buffer
  */
-uint16_t icmp_checksum(void const *buffer, size_t len);
+uint16_t icmp_checksum(struct iovec const *iov, size_t len, size_t bytec);
 
 /**
  * Calculate the square root of a number using the Babylonian method

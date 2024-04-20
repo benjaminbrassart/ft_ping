@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 17:02:32 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 18:54:26 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,12 +26,6 @@
 struct icmp_packet {
 	struct icmphdr hdr;
 	uint8_t data[64 - sizeof(struct icmphdr)];
-};
-
-struct packet_response {
-	struct iphdr ip;
-	struct icmphdr icmp;
-	uint8_t data[sizeof(struct iphdr) + 64];
 };
 
 static int ft_ping(struct ft_ping *ping, int fd);
@@ -103,24 +97,47 @@ static double _timespec_diff(struct timespec const *t1,
 static int _send_ping_packet(struct ft_ping *ping, int fd)
 {
 	static uint16_t seq = 0;
-	struct icmp_packet packet;
+	/* struct icmp_packet packet; */
 
-	packet.hdr.type = ICMP_ECHO;
-	packet.hdr.code = 0x00U;
-	packet.hdr.checksum = 0x0000U;
-	packet.hdr.un.echo.id = (uint16_t)getpid();
-	packet.hdr.un.echo.sequence = seq;
+	static uint8_t PAYLOAD[56] = {};
 
-	for (uint8_t i = 0; i < sizeof(packet.data); i += 1) {
-		packet.data[i] = i;
+	for (uint8_t i = 0; i < sizeof(PAYLOAD); i += 1) {
+		PAYLOAD[i] = i % 256;
 	}
 
-	packet.hdr.checksum = icmp_checksum(&packet, sizeof(packet));
+	struct icmphdr icmp = {
+		.type = ICMP_ECHO,
+		.code = 0,
+		.checksum = 0,
+		.un = {
+			.echo = {
+				.id = (uint16_t)getpid(),
+				.sequence = seq,
+			},
+		},
+	};
+	struct iovec iov[] = {
+		{ &icmp, sizeof(icmp) },
+		{ &PAYLOAD[0], sizeof(PAYLOAD) },
+	};
+	struct msghdr msg = {
+		.msg_iov = iov,
+		.msg_iovlen = sizeof(iov) / sizeof(iov[0]),
+		.msg_name = &ping->addr,
+		.msg_namelen = sizeof(ping->addr),
+	};
+
+	/* packet.hdr.type = ICMP_ECHO; */
+	/* packet.hdr.code = 0x00U; */
+	/* packet.hdr.checksum = 0x0000U; */
+	/* packet.hdr.un.echo.id = (uint16_t)getpid(); */
+	/* packet.hdr.un.echo.sequence = seq; */
+
+	icmp.checksum = icmp_checksum(msg.msg_iov, msg.msg_iovlen);
 
 	ssize_t rr;
 
-	rr = sendto(fd, &packet, sizeof(packet), MSG_DONTWAIT,
-		    (struct sockaddr const *)&ping->addr, sizeof(ping->addr));
+	rr = sendmsg(fd, &msg, MSG_DONTWAIT);
 	if (rr == -1) {
 		int err;
 
@@ -158,18 +175,21 @@ static int _send_ping_packet(struct ft_ping *ping, int fd)
 
 static int _receive_ping_packet(struct ft_ping *ping, int fd)
 {
-	struct packet_response response = {};
-	struct iovec iov = {
-		.iov_base = &response,
-		.iov_len = sizeof(response),
+	struct iphdr ip;
+	struct icmphdr icmp;
+	uint8_t payload[sizeof(struct iphdr) + 64];
+	struct iovec iov[] = {
+		{ &ip, sizeof(ip) },
+		{ &icmp, sizeof(icmp) },
+		{ &payload, sizeof(payload) },
 	};
 	struct msghdr msg = {
-		.msg_iov = &iov,
-		.msg_iovlen = 1,
+		.msg_iov = iov,
+		.msg_iovlen = sizeof(iov) / sizeof(iov[0]),
 	};
 	ssize_t rr;
 
-	rr = recvmsg(fd, &msg, MSG_DONTWAIT);
+	rr = recvmsg(fd, &msg, MSG_DONTWAIT | MSG_TRUNC);
 	if (rr == -1) {
 		int err;
 
@@ -182,16 +202,44 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 		return 0;
 	}
 
-	switch (response.icmp.type) {
+	if ((size_t)rr < (iov[0].iov_len + iov[1].iov_len)) {
+		fprintf(stderr, "packet too small\n");
+		return 0;
+	}
+
+	size_t total_length = 0;
+	for (size_t i = 0; i < msg.msg_iovlen; i += 1) {
+		total_length += msg.msg_iov[i].iov_len;
+	}
+
+	if ((size_t)rr > total_length) {
+		fprintf(stderr, "packet too big\n");
+	}
+
+	if (icmp.type == ICMP_ECHO) {
+		return 0;
+	}
+
+	char src_ip[INET_ADDRSTRLEN];
+
+	inet_ntop(AF_INET, &ip.saddr, src_ip, sizeof(src_ip));
+
+	switch (icmp.type) {
 	case ICMP_ECHOREPLY: {
-		if (response.icmp.un.echo.id != (uint16_t)getpid()) {
+		if (icmp.un.echo.id != (uint16_t)getpid()) {
 			return 0;
 		}
 
-		uint16_t seq = response.icmp.un.echo.sequence;
-		char src_ip[INET_ADDRSTRLEN];
+		uint16_t seq = icmp.un.echo.sequence;
 
-		inet_ntop(AF_INET, &response.ip.saddr, src_ip, sizeof(src_ip));
+		uint16_t expected_checksum =
+			icmp_checksum(&msg.msg_iov[1], msg.msg_iovlen - 1);
+
+		if (expected_checksum != icmp.checksum) {
+			fprintf(stderr,
+				"checksum mismatch for %s (expected 0x%04hx, got 0x%04hx)\n",
+				src_ip, expected_checksum, icmp.checksum);
+		}
 
 		struct packet_list_node *it = ping->packets_sent.first;
 
@@ -200,8 +248,7 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 		}
 
 		if (it == NULL) {
-			ERR("duplicate packet");
-			// TODO packet seq was not found, what do we do here??
+			ping->stats.dup_count += 1;
 			return 0;
 		}
 
@@ -245,16 +292,13 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 		if (!ping->flags.quiet && !ping->flags.flood) {
 			printf("%ld bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms\n",
 			       rr - (ssize_t)sizeof(struct iphdr), src_ip,
-			       response.icmp.un.echo.sequence, response.ip.ttl,
-			       time_diff);
+			       icmp.un.echo.sequence, ip.ttl, time_diff);
 		}
 		break;
 	}
-	case ICMP_ECHO:
-		break;
 	default: {
 		struct iphdr const *origin_ip =
-			(struct iphdr const *)&response.data[0];
+			(struct iphdr const *)&payload[0];
 		struct icmphdr const *origin_icmp =
 			(struct icmphdr const *)(origin_ip + 1);
 
@@ -262,17 +306,15 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 			return 0;
 		}
 
-		char const *type_str = icmp_description(response.icmp.type,
-							response.icmp.code);
+		char const *type_str = icmp_description(icmp.type, icmp.code);
 		char src_ip[INET_ADDRSTRLEN];
 
-		inet_ntop(AF_INET, &response.ip.saddr, src_ip, sizeof(src_ip));
+		inet_ntop(AF_INET, &ip.saddr, src_ip, sizeof(src_ip));
 
 		printf("%ld bytes from %s: %s\n",
 		       rr - (ssize_t)sizeof(struct iphdr), src_ip, type_str);
 		if (ping->flags.verbose) {
-			dump_header(&response.ip, &response.icmp,
-				    response.data);
+			dump_header(&ip, &icmp, payload);
 		}
 		break;
 	}
@@ -306,8 +348,12 @@ static void _print_stats(struct ft_ping const *ping)
 	}
 
 	printf("--- %s ping statistics ---\n", ping->host);
-	printf("%lu packets transmitted, %lu packets received, %lu%% packet loss\n",
-	       transmit_count, receive_count, packet_loss);
+	printf("%zu packets transmitted, ", transmit_count);
+	printf("%zu packets received, ", receive_count);
+	if (ping->stats.dup_count != 0) {
+		printf("%zu duplicates, ", receive_count);
+	}
+	printf("%zu%% packet loss\n", packet_loss);
 	if (receive_count != 0) {
 		_print_roundtrip(ping);
 	}
