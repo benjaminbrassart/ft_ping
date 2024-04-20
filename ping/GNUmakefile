@@ -6,7 +6,7 @@
 #    By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/04/14 15:01:33 by bbrassar          #+#    #+#              #
-#    Updated: 2024/04/19 13:47:10 by bbrassar         ###   ########.fr        #
+#    Updated: 2024/04/20 10:44:05 by bbrassar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -19,7 +19,7 @@ OBJ := $(SRC:.c=.c.o)
 DEP := $(OBJ:.o=.d)
 
 $(NAME): $(OBJ)
-	$(CC) $^ -o $@
+	$(CC) $^ -o $@ -lrt
 
 $(OBJ): .EXTRA_PREREQS = $(MAKEFILE)
 $(OBJ): %.c.o: %.c
