@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 16:40:30 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 16:59:19 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -341,12 +341,12 @@ static int ft_ping(struct ft_ping *ping, int fd)
 
 		struct itimerspec const timer_conf = {
 			.it_interval = {
-				.tv_sec = 0,
-				.tv_nsec = 500000,
+				.tv_sec = 1,
+				.tv_nsec = 0,
 			},
 			.it_value = {
-				.tv_sec = 0,
-				.tv_nsec = 500000,
+				.tv_sec = 1,
+				.tv_nsec = 0,
 			},
 		};
 
