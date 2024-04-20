@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/19 18:14:51 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 10:42:24 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -212,9 +212,6 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 
 		double time_diff = _timespec_diff(&recv_time, &it->send_time);
 
-		it->recv_delta = time_diff;
-
-		// remove packet from sent list
 		if (it->prev != NULL) {
 			it->prev->next = it->next;
 		}
@@ -223,6 +220,8 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 			it->next->prev = it->prev;
 		}
 
+		free(it);
+
 		ping->packets_sent.size -= 1;
 
 		if (ping->packets_sent.size == 0) {
@@ -230,21 +229,24 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 			ping->packets_sent.last = NULL;
 		}
 
-		// add packet to received list
-		if (ping->packets_received.size == 0) {
-			ping->packets_received.first = it;
-		} else {
-			ping->packets_received.last->next = it;
+		if (ping->stats.recv_count == 0 ||
+		    time_diff > ping->stats.time_max) {
+			ping->stats.time_max = time_diff;
 		}
 
-		it->prev = ping->packets_received.last;
-		ping->packets_received.last = it;
-		ping->packets_received.size += 1;
+		if (ping->stats.recv_count == 0 ||
+		    time_diff < ping->stats.time_min) {
+			ping->stats.time_min = time_diff;
+		}
+
+		ping->stats.time_sum += time_diff;
+		ping->stats.time_sum_squared += (time_diff * time_diff);
+		ping->stats.recv_count += 1;
 
 		printf("%ld bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms\n",
 		       rr - (ssize_t)sizeof(struct iphdr), src_ip,
 		       response.icmp.un.echo.sequence, response.ip.ttl,
-		       it->recv_delta);
+		       time_diff);
 		break;
 	}
 	case ICMP_ECHO:
@@ -270,44 +272,22 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 
 static void _print_roundtrip(struct ft_ping const *ping)
 {
-	double time_min;
-	double time_max;
-	double time_total = 0.0;
-	double time_total_squared = 0.0;
-
-	for (struct packet_list_node *it = ping->packets_received.first;
-	     it != NULL; it = it->next) {
-		double time_diff = it->recv_delta;
-
-		if (it == ping->packets_received.first ||
-		    time_diff < time_min) {
-			time_min = time_diff;
-		}
-
-		if (it == ping->packets_received.first ||
-		    time_diff > time_max) {
-			time_max = time_diff;
-		}
-
-		time_total += time_diff;
-		time_total_squared += (time_diff * time_diff);
-	}
-
-	double time_avg = time_total / (double)ping->packets_received.size;
+	double time_avg = ping->stats.time_sum / (double)ping->stats.recv_count;
 	double time_stddev = ft_sqrt(
-		time_total_squared / (double)ping->packets_received.size -
+		ping->stats.time_sum_squared / (double)ping->stats.recv_count -
 			(time_avg * time_avg),
 		0.0005);
 
 	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n",
-	       time_min, time_max, time_avg, time_stddev);
+	       ping->stats.time_min, ping->stats.time_max, time_avg,
+	       time_stddev);
 }
 
 static void _print_stats(struct ft_ping const *ping)
 {
 	size_t transmit_count =
-		ping->packets_sent.size + ping->packets_received.size;
-	size_t receive_count = ping->packets_received.size;
+		ping->packets_sent.size + ping->stats.recv_count;
+	size_t receive_count = ping->stats.recv_count;
 	size_t packet_loss = 0;
 
 	if (transmit_count != 0) {
@@ -402,7 +382,6 @@ static int ft_ping(struct ft_ping *ping, int fd)
 	_print_stats(ping);
 
 _cleanup:
-	_packet_list_free(&ping->packets_received);
 	_packet_list_free(&ping->packets_sent);
 
 _delete_timer:

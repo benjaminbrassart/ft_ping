@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:18:17 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/19 13:46:26 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 10:28:42 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,10 +26,7 @@ struct packet_list_node {
 	struct packet_list_node *next;
 	struct packet_list_node *prev;
 	uint16_t seq;
-	union {
-		struct timespec send_time;
-		double recv_delta;
-	};
+	struct timespec send_time;
 };
 
 struct packet_list {
@@ -45,7 +42,15 @@ struct ft_ping {
 	struct sockaddr_in addr;
 	char saddr[INET_ADDRSTRLEN];
 	struct packet_list packets_sent;
-	struct packet_list packets_received;
+	struct {
+		double time_min;
+		double time_max;
+		// sum of received packets time deltas for calculating avg
+		double time_sum;
+		// sum of squared received packets time deltas for calculating stddev
+		double time_sum_squared;
+		size_t recv_count;
+	} stats;
 };
 
 /**
