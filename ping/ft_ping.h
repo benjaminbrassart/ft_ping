@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:18:17 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 10:28:42 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 10:54:44 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,7 +71,8 @@ int create_socket(uint8_t ttl);
 /**
  * Dump an IPv4 header and an ICMP header to the standard output
  */
-void dump_header(struct iphdr const *ip, struct icmphdr const *icmp);
+void dump_header(struct iphdr const *ip, struct icmphdr const *icmp,
+		 void const *data);
 
 /**
  * Return the ICMP checksum for a given buffer

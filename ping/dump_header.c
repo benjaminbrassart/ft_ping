@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/18 20:58:19 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/18 22:21:13 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 10:57:11 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,12 +60,16 @@ static void _ip_header_dump(struct iphdr const *ip)
 	       ip->version, ip->ihl, ip->tos, total_length, ip->id, flags,
 	       fragmentation_offset, ip->ttl, ip->protocol, ntohs(ip->check),
 	       src, dst);
+	// TODO print Data
 }
 
-void dump_header(struct iphdr const *ip, struct icmphdr const *icmp)
+void dump_header(struct iphdr const *ip, struct icmphdr const *icmp,
+		 void const *data)
 {
-	uint16_t id = 0x0000; // TODO
-	uint16_t seq = 0x0000; // TODO
+	struct iphdr const *origin_ip = data;
+	struct icmphdr const *origin_icmp = (struct icmphdr const *)(origin_ip + 1);
+	uint16_t id = origin_icmp->un.echo.id;
+	uint16_t seq = origin_icmp->un.echo.sequence;
 
 	_ip_header_hexdump(ip);
 	_ip_header_dump(ip);
