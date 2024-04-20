@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 10:58:05 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 15:21:59 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,7 +46,7 @@ int main(int argc, char const *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (ping.flag_help) {
+	if (ping.flags.help) {
 		printf("Usage: ft_ping [-v] <host>\n");
 		return EXIT_SUCCESS;
 	}
@@ -260,7 +260,7 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 
 		printf("%ld bytes from %s: %s\n",
 		       rr - (ssize_t)sizeof(struct iphdr), src_ip, type_str);
-		if (ping->flag_verbose) {
+		if (ping->flags.verbose) {
 			dump_header(&response.ip, &response.icmp, response.data);
 		}
 		break;
@@ -320,7 +320,7 @@ static int ft_ping(struct ft_ping *ping, int fd)
 	int status = EXIT_SUCCESS;
 
 	printf("PING %s (%s): %d data bytes", ping->host, ping->saddr, 56);
-	if (ping->flag_verbose) {
+	if (ping->flags.verbose) {
 		printf(", id 0x%1$04hx = %1$hu", (uint16_t)getpid());
 	}
 	printf("\n");

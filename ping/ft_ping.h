@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:18:17 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 10:54:44 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 15:20:56 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -36,8 +36,10 @@ struct packet_list {
 };
 
 struct ft_ping {
-	unsigned flag_verbose : 1;
-	unsigned flag_help : 1;
+	struct {
+		unsigned verbose : 1;
+		unsigned help : 1;
+	} flags;
 	char const *host;
 	struct sockaddr_in addr;
 	char saddr[INET_ADDRSTRLEN];
