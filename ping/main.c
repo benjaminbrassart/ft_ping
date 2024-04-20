@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 16:59:19 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 17:02:32 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -253,6 +253,15 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 	case ICMP_ECHO:
 		break;
 	default: {
+		struct iphdr const *origin_ip =
+			(struct iphdr const *)&response.data[0];
+		struct icmphdr const *origin_icmp =
+			(struct icmphdr const *)(origin_ip + 1);
+
+		if (origin_icmp->un.echo.id != (uint16_t)getpid()) {
+			return 0;
+		}
+
 		char const *type_str = icmp_description(response.icmp.type,
 							response.icmp.code);
 		char src_ip[INET_ADDRSTRLEN];
