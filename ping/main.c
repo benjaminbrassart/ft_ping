@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 15:21:59 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 16:40:30 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,8 +22,6 @@
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 #include <unistd.h>
-
-#define DEFAULT_TTL ((uint8_t)64U)
 
 struct icmp_packet {
 	struct icmphdr hdr;
@@ -57,7 +55,7 @@ int main(int argc, char const *argv[])
 
 	int fd;
 
-	fd = create_socket(DEFAULT_TTL);
+	fd = create_socket(&ping);
 	if (fd == -1) {
 		return EXIT_FAILURE;
 	}
@@ -202,6 +200,7 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 		}
 
 		if (it == NULL) {
+			ERR("duplicate packet");
 			// TODO packet seq was not found, what do we do here??
 			return 0;
 		}
@@ -243,10 +242,12 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 		ping->stats.time_sum_squared += (time_diff * time_diff);
 		ping->stats.recv_count += 1;
 
-		printf("%ld bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms\n",
-		       rr - (ssize_t)sizeof(struct iphdr), src_ip,
-		       response.icmp.un.echo.sequence, response.ip.ttl,
-		       time_diff);
+		if (!ping->flags.quiet && !ping->flags.flood) {
+			printf("%ld bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms\n",
+			       rr - (ssize_t)sizeof(struct iphdr), src_ip,
+			       response.icmp.un.echo.sequence, response.ip.ttl,
+			       time_diff);
+		}
 		break;
 	}
 	case ICMP_ECHO:
@@ -261,7 +262,8 @@ static int _receive_ping_packet(struct ft_ping *ping, int fd)
 		printf("%ld bytes from %s: %s\n",
 		       rr - (ssize_t)sizeof(struct iphdr), src_ip, type_str);
 		if (ping->flags.verbose) {
-			dump_header(&response.ip, &response.icmp, response.data);
+			dump_header(&response.ip, &response.icmp,
+				    response.data);
 		}
 		break;
 	}
@@ -325,32 +327,42 @@ static int ft_ping(struct ft_ping *ping, int fd)
 	}
 	printf("\n");
 
-	signal(SIGINT, _handle_sigint);
-
 	timer_t timer_id;
-	struct sigevent sev = {
-		.sigev_notify = SIGEV_SIGNAL,
-		.sigev_signo = SIGALRM,
-	};
 
-	if (timer_create(CLOCK_MONOTONIC, &sev, &timer_id) == -1) {
-		return EXIT_FAILURE;
-	}
+	if (!ping->flags.flood) {
+		struct sigevent sev = {
+			.sigev_notify = SIGEV_SIGNAL,
+			.sigev_signo = SIGALRM,
+		};
 
-	struct itimerspec const timer_conf = {
-		.it_interval = {
-			.tv_sec = 1,
-			.tv_nsec = 0,
-		},
-		.it_value = {
-			.tv_sec = 1,
-			.tv_nsec = 0,
-		},
-	};
+		if (timer_create(CLOCK_MONOTONIC, &sev, &timer_id) == -1) {
+			return EXIT_FAILURE;
+		}
 
-	if (timer_settime(timer_id, 0, &timer_conf, NULL) == -1) {
-		status = EXIT_FAILURE;
-		goto _delete_timer;
+		struct itimerspec const timer_conf = {
+			.it_interval = {
+				.tv_sec = 0,
+				.tv_nsec = 500000,
+			},
+			.it_value = {
+				.tv_sec = 0,
+				.tv_nsec = 500000,
+			},
+		};
+
+		if (timer_settime(timer_id, 0, &timer_conf, NULL) == -1) {
+			status = EXIT_FAILURE;
+			goto _delete_timer;
+		}
+
+		struct sigaction sa = {};
+
+		sa.sa_flags = 0;
+		sa.sa_restorer = NULL;
+		sigemptyset(&sa.sa_mask);
+
+		sa.sa_handler = _handle_sigalrm;
+		sigaction(SIGALRM, &sa, NULL);
 	}
 
 	struct sigaction sa = {};
@@ -359,14 +371,11 @@ static int ft_ping(struct ft_ping *ping, int fd)
 	sa.sa_restorer = NULL;
 	sigemptyset(&sa.sa_mask);
 
-	sa.sa_handler = _handle_sigalrm;
-	sigaction(SIGALRM, &sa, NULL);
-
 	sa.sa_handler = _handle_sigint;
 	sigaction(SIGINT, &sa, NULL);
 
 	while (_RUN) {
-		if (_SEND) {
+		if (ping->flags.flood || _SEND) {
 			_SEND = 0;
 			if (_send_ping_packet(ping, fd) == -1) {
 				status = EXIT_FAILURE;
@@ -385,7 +394,9 @@ _cleanup:
 	_packet_list_free(&ping->packets_sent);
 
 _delete_timer:
-	timer_delete(timer_id);
+	if (!ping->flags.flood) {
+		timer_delete(timer_id);
+	}
 
 	return status;
 }

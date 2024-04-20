@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:18:17 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 15:20:56 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/20 16:06:15 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,7 +38,11 @@ struct packet_list {
 struct ft_ping {
 	struct {
 		unsigned verbose : 1;
+		unsigned quiet : 1;
+		unsigned debug : 1;
 		unsigned help : 1;
+		unsigned flood : 1;
+		uint8_t ttl;
 	} flags;
 	char const *host;
 	struct sockaddr_in addr;
@@ -68,7 +72,7 @@ int resolve_hostname(struct ft_ping *ping);
 /**
  * Return a valid socket file descriptor on success, -1 on failure
  */
-int create_socket(uint8_t ttl);
+int create_socket(struct ft_ping const *ping);
 
 /**
  * Dump an IPv4 header and an ICMP header to the standard output
