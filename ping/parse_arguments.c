@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:17:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/25 21:50:16 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/25 21:55:26 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,16 +34,16 @@ int parse_arguments(struct ft_ping *ping, int argc, char const *argv[])
 		if (!delimiter && argv[i][0] == '-' && argv[i][1] != '\0') {
 			if (strcmp("--", argv[i]) == 0) {
 				delimiter = 1;
-			} else if (strcmp("-?", argv[i]) == 0) {
+			} else if (strcmp("-?", argv[i]) == 0 || strcmp("--help", argv[i]) == 0) {
 				ping->flags.help = 1;
 				return 0;
-			} else if (strcmp("-v", argv[i]) == 0) {
+			} else if (strcmp("-v", argv[i]) == 0 || strcmp("--verbose", argv[i]) == 0) {
 				ping->flags.verbose = 1;
-			} else if (strcmp("-q", argv[i]) == 0) {
+			} else if (strcmp("-q", argv[i]) == 0 || strcmp("--quiet", argv[i]) == 0) {
 				ping->flags.quiet = 1;
-			} else if (strcmp("-d", argv[i]) == 0) {
+			} else if (strcmp("-d", argv[i]) == 0 || strcmp("--debug", argv[i]) == 0) {
 				ping->flags.debug = 1;
-			} else if (strcmp("-f", argv[i]) == 0) {
+			} else if (strcmp("-f", argv[i]) == 0 || strcmp("--flood", argv[i]) == 0) {
 				ping->flags.flood = 1;
 			} else if (strcmp("--ttl", argv[i]) == 0) {
 				i += 1;
