@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 17:02:32 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/25 22:02:58 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,6 +46,17 @@ int main(int argc, char const *argv[])
 
 	if (ping.flags.help) {
 		printf("Usage: ft_ping [-v] <host>\n");
+		return EXIT_SUCCESS;
+	}
+
+	if (ping.flags.version) {
+		printf("ft_ping version 1.0.0\n");
+		printf("Copyright (C) 2024 Benjamin Brassart.\n");
+		printf("License MIT <https://spdx.org/licenses/MIT.html>.\n");
+		printf("This is free software: you are free to change and redistribute it.\n");
+		printf("There is NO WARRANTY, to the extent permitted by law.\n");
+		printf("\n");
+		printf("Written by Benjamin Brassart.\n");
 		return EXIT_SUCCESS;
 	}
 
