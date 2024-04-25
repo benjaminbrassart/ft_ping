@@ -6,12 +6,13 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:18:17 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 16:06:15 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/25 21:39:09 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
 
+#include <stdio.h>
 #include <stdint.h>
 #include <time.h>
 
