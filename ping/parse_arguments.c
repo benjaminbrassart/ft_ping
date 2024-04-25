@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:17:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/25 21:55:26 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/25 21:56:49 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,7 @@ int parse_arguments(struct ft_ping *ping, int argc, char const *argv[])
 	ping->flags.verbose = 0;
 	ping->flags.flood = 0;
 	ping->flags.help = 0;
+	ping->flags.version = 0;
 	ping->flags.ttl = DEFAULT_TTL;
 	ping->host = NULL;
 
@@ -36,6 +37,9 @@ int parse_arguments(struct ft_ping *ping, int argc, char const *argv[])
 				delimiter = 1;
 			} else if (strcmp("-?", argv[i]) == 0 || strcmp("--help", argv[i]) == 0) {
 				ping->flags.help = 1;
+				return 0;
+			} else if (strcmp("-V", argv[i]) == 0 || strcmp("--version", argv[i]) == 0) {
+				ping->flags.version = 1;
 				return 0;
 			} else if (strcmp("-v", argv[i]) == 0 || strcmp("--verbose", argv[i]) == 0) {
 				ping->flags.verbose = 1;
