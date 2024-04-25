@@ -6,13 +6,11 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 16:01:40 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/20 15:52:11 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/25 21:39:13 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ft_ping.h"
-
-#include <stdio.h>
 
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -30,7 +28,7 @@ int create_socket(struct ft_ping const *ping)
 		return -1;
 	}
 
-	if (setsockopt(fd, SOL_IP, IP_TTL, &ping->flags.ttl,
+	if (setsockopt(fd, IPPROTO_IP, IP_TTL, &ping->flags.ttl,
 		       sizeof(ping->flags.ttl)) == -1) {
 		ERR("cannot set ip option IP_TTL: %m");
 		goto _close_socket;
