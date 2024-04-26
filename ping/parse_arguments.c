@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:17:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/25 23:29:08 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/26 20:17:02 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@ int parse_arguments(struct ft_ping *ping, int argc, char const *argv[])
 	ping->flags.flood = 0;
 	ping->flags.help = 0;
 	ping->flags.version = 0;
+	ping->flags.no_route = 0;
 	ping->flags.ttl = DEFAULT_TTL;
 	ping->host = NULL;
 
@@ -95,6 +96,12 @@ int parse_arguments(struct ft_ping *ping, int argc, char const *argv[])
 						goto _long_opt_argument_boolean;
 					}
 					ping->flags.flood = 1;
+				} else if (strncmp("ignore-routing", optname,
+						   optnamelen) == 0) {
+					if (optval != NULL && samearg) {
+						goto _long_opt_argument_boolean;
+					}
+					ping->flags.no_route = 1;
 				} else if (strncmp("ttl", optname,
 						   optnamelen) == 0) {
 					if (optval == NULL) {
@@ -160,14 +167,18 @@ _long_opt_argument_boolean:
 					case 'q':
 						ping->flags.quiet = 1;
 						break;
+					case 'r':
+						ping->flags.no_route = 1;
+						break;
 					case 'V':
-						ping->flags.verbose = 1;
+						ping->flags.version = 1;
 						return 0;
 					case '?':
 						ping->flags.help = 1;
 						return 0;
 					default:
-						ERR("unknown option -- '%c'", argv[i][j]);
+						ERR("unknown option -- '%c'",
+						    argv[i][j]);
 						return -1;
 					}
 				}

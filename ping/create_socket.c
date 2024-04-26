@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 16:01:40 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/25 21:39:13 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/26 20:17:52 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,6 +38,13 @@ int create_socket(struct ft_ping const *ping)
 	    setsockopt(fd, SOL_SOCKET, SO_DEBUG, &SOCKOPT_ON,
 		       sizeof(SOCKOPT_ON)) == -1) {
 		ERR("cannot set socket option SO_DEBUG: %m");
+		goto _close_socket;
+	}
+
+	if (ping->flags.no_route &&
+	    setsockopt(fd, SOL_SOCKET, SO_DONTROUTE, &SOCKOPT_ON,
+		       sizeof(SOCKOPT_ON)) == -1) {
+		ERR("cannot set socket option SO_DONTROUTE: %m");
 		goto _close_socket;
 	}
 
