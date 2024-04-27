@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/25 22:02:58 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/27 15:23:33 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,11 +23,6 @@
 #include <netinet/ip_icmp.h>
 #include <unistd.h>
 
-struct icmp_packet {
-	struct icmphdr hdr;
-	uint8_t data[64 - sizeof(struct icmphdr)];
-};
-
 struct packet_response {
 	struct iphdr ip;
 	struct icmphdr icmp;
@@ -39,14 +34,17 @@ static int ft_ping(struct ft_ping *ping, int fd);
 int main(int argc, char const *argv[])
 {
 	struct ft_ping ping = {};
+	int result;
 
 	if (parse_arguments(&ping, argc, argv) == -1) {
-		return EXIT_FAILURE;
+		result = -1;
+		goto _return;
 	}
 
 	if (ping.flags.help) {
 		printf("Usage: ft_ping [-v] <host>\n");
-		return EXIT_SUCCESS;
+		result = 0;
+		goto _free_arguments;
 	}
 
 	if (ping.flags.version) {
@@ -57,29 +55,35 @@ int main(int argc, char const *argv[])
 		printf("There is NO WARRANTY, to the extent permitted by law.\n");
 		printf("\n");
 		printf("Written by Benjamin Brassart.\n");
-		return EXIT_SUCCESS;
+		result = 0;
+		goto _free_arguments;
 	}
 
 	if (resolve_hostname(&ping) == -1) {
-		return EXIT_FAILURE;
+		result = -1;
+		goto _free_arguments;
 	}
 
 	int fd;
 
 	fd = create_socket(&ping);
 	if (fd == -1) {
-		return EXIT_FAILURE;
+		result = -1;
+		goto _free_arguments;
 	}
-
-	int result;
 
 	result = ft_ping(&ping, fd);
 
 	if (close(fd) == -1) {
 		ERR("cannot close socket: %m");
-		return EXIT_FAILURE;
+		result = -1;
 	}
 
+_free_arguments:
+	free(ping.data_buffer);
+	free(ping.flags.padding);
+
+_return:
 	return result == -1 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
@@ -113,25 +117,40 @@ static double _timespec_diff(struct timespec const *t1,
 
 static int _send_ping_packet(struct ft_ping *ping, int fd)
 {
-	static uint16_t seq = 0;
-	struct icmp_packet packet;
+	struct icmphdr icmp = {
+		.type = ICMP_ECHO,
+		.code = 0x00U,
+		.checksum = 0x0000U,
+		.un = {
+			.echo = {
+				.id = (uint16_t)getpid(),
+				.sequence = ping->sequence,
+			},
+		},
+	};
 
-	packet.hdr.type = ICMP_ECHO;
-	packet.hdr.code = 0x00U;
-	packet.hdr.checksum = 0x0000U;
-	packet.hdr.un.echo.id = (uint16_t)getpid();
-	packet.hdr.un.echo.sequence = seq;
+	struct iovec iovs[] = {
+		{ &icmp, sizeof(icmp) },
+		{ ping->data_buffer, (size_t)ping->flags.data_size },
+	};
+	size_t iovc = sizeof(iovs) / sizeof(iovs[0]);
+	struct msghdr message = {
+		.msg_iov = iovs,
+		.msg_iovlen = iovc,
+		.msg_name = &ping->addr,
+		.msg_namelen = sizeof(ping->addr),
+	};
+	size_t bytec = 0;
 
-	for (uint8_t i = 0; i < sizeof(packet.data); i += 1) {
-		packet.data[i] = i;
+	for (size_t i = 0; i < iovc; i += 1) {
+		bytec += iovs[i].iov_len;
 	}
 
-	packet.hdr.checksum = icmp_checksum(&packet, sizeof(packet));
+	icmp.checksum = icmp_checksum(iovs, iovc, bytec);
 
 	ssize_t rr;
 
-	rr = sendto(fd, &packet, sizeof(packet), MSG_DONTWAIT,
-		    (struct sockaddr const *)&ping->addr, sizeof(ping->addr));
+	rr = sendmsg(fd, &message, MSG_DONTWAIT);
 	if (rr == -1) {
 		int err;
 
@@ -151,7 +170,7 @@ static int _send_ping_packet(struct ft_ping *ping, int fd)
 	}
 
 	clock_gettime(CLOCK_MONOTONIC, &node->send_time);
-	node->seq = seq;
+	node->seq = ping->sequence;
 
 	if (ping->packets_sent.size == 0) {
 		ping->packets_sent.first = node;
@@ -163,7 +182,7 @@ static int _send_ping_packet(struct ft_ping *ping, int fd)
 	ping->packets_sent.last = node;
 	ping->packets_sent.size += 1;
 
-	seq += 1;
+	ping->sequence += 1;
 	return 0;
 }
 
@@ -341,7 +360,8 @@ static int ft_ping(struct ft_ping *ping, int fd)
 {
 	int status = EXIT_SUCCESS;
 
-	printf("PING %s (%s): %d data bytes", ping->host, ping->saddr, 56);
+	printf("PING %s (%s): %hu data bytes", ping->host, ping->saddr,
+	       ping->flags.data_size);
 	if (ping->flags.verbose) {
 		printf(", id 0x%1$04hx = %1$hu", (uint16_t)getpid());
 	}

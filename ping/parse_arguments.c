@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:17:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/26 20:17:02 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/04/27 15:23:00 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,9 +14,85 @@
 
 #include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define DEFAULT_TTL ((uint8_t)64U)
+#define DEFAULT_DATA_SIZE ((uint16_t)56)
+
+static int _parse_ttl(char const *s, uint8_t *out_p)
+{
+	char const *it = s;
+	uint8_t sum = 0;
+	uint8_t digit;
+
+	while (isdigit(*it)) {
+		digit = (uint8_t)(*it - '0');
+		if (sum > (255 - digit) / 10) {
+			ERR("value too big for option --ttl");
+			return -1;
+		}
+		sum = (uint8_t)(sum * 10 + digit);
+		it++;
+	}
+
+	if (it == s || *it != '\0') {
+		ERR("invalid value for option --ttl");
+		return -1;
+	}
+
+	*out_p = sum;
+	return 0;
+}
+
+static int _parse_data_size(char const *s, uint16_t *out_p)
+{
+	char const *it = s;
+	uint16_t sum = 0;
+	uint8_t digit;
+
+	while (isdigit(*it)) {
+		digit = (uint8_t)(*it - '0');
+
+		if (sum > (65535 - digit) / 10) {
+			ERR("value too big for option --size");
+			return -1;
+		}
+		sum = (uint16_t)(sum * 10 + digit);
+		it++;
+	}
+
+	if (it == s || *it != '\0') {
+		ERR("invalid value for option --size");
+		return -1;
+	}
+
+	*out_p = sum;
+	return 0;
+}
+
+/*
+static int _validate_padding(char const *s, uint16_t *size_p)
+{
+	size_t index = 0;
+	uint16_t size = 0;
+
+	while (isxdigit(s[index])) {
+		if ((index % 2) == 0) {
+			size += 1;
+		}
+		index += 1;
+	}
+
+	if (s[index] != '\0') {
+		ERR("error in pattern near %s", &s[index]);
+		return -1;
+	}
+
+	*size_p = size;
+	return 0;
+}
+*/
 
 int parse_arguments(struct ft_ping *ping, int argc, char const *argv[])
 {
@@ -30,6 +106,7 @@ int parse_arguments(struct ft_ping *ping, int argc, char const *argv[])
 	ping->flags.version = 0;
 	ping->flags.no_route = 0;
 	ping->flags.ttl = DEFAULT_TTL;
+	ping->flags.data_size = DEFAULT_DATA_SIZE;
 	ping->host = NULL;
 
 	for (int i = 1; i < argc; i += 1) {
@@ -110,31 +187,28 @@ int parse_arguments(struct ft_ping *ping, int argc, char const *argv[])
 					}
 
 					uint8_t ttl = 0x00;
-					int j = 0;
-					uint8_t digit;
 
-					while (isdigit(optval[j])) {
-						digit = (uint8_t)(optval[j] -
-								  '0');
-
-						// ttl * 10 + digit > MAX
-						// <=> ttl * 10 > MAX - digit
-						// <=> ttl > (MAX - digit) / 10
-						if (ttl > (255 - digit) / 10) {
-							ERR("value too big for option --ttl");
-							return -1;
-						}
-						ttl = (uint8_t)(ttl * 10 +
-								digit);
-						j += 1;
-					}
-
-					if (j == 0 || optval[j] != '\0') {
-						ERR("invalid value for option --ttl");
+					if (_parse_ttl(optval, &ttl) == -1) {
 						return -1;
 					}
 
 					ping->flags.ttl = ttl;
+					optoffset += 1;
+				} else if (strncmp("size", optname,
+						   optnamelen) == 0) {
+					if (optval == NULL) {
+						ERR("missing parameter for option --size");
+						return -1;
+					}
+
+					uint16_t data_size;
+
+					if (_parse_data_size(
+						    optval, &data_size) == -1) {
+						return -1;
+					}
+
+					ping->flags.data_size = data_size;
 					optoffset += 1;
 				} else {
 					ERR("unknown option '--%s'", optname);
@@ -154,6 +228,9 @@ _long_opt_argument_boolean:
 			} else {
 				// short options
 				for (int j = 1; argv[i][j] != '\0'; j += 1) {
+					char const *optval = NULL;
+					int samearg = 0;
+
 					switch (argv[i][j]) {
 					case 'f':
 						ping->flags.flood = 1;
@@ -170,6 +247,29 @@ _long_opt_argument_boolean:
 					case 'r':
 						ping->flags.no_route = 1;
 						break;
+					case 's':
+						if (argv[i][j + 1] != '\0') {
+							optval =
+								&argv[i][j + 1];
+							samearg = 1;
+						} else if (i < argc - 1) {
+							optval = argv[i + 1];
+						} else {
+							ERR("missing parameter for option --size");
+							return -1;
+						}
+
+						uint16_t data_size;
+
+						if (_parse_data_size(
+							    optval,
+							    &data_size) == -1) {
+							return -1;
+						}
+
+						ping->flags.data_size =
+							data_size;
+						break;
 					case 'V':
 						ping->flags.version = 1;
 						return 0;
@@ -180,6 +280,13 @@ _long_opt_argument_boolean:
 						ERR("unknown option -- '%c'",
 						    argv[i][j]);
 						return -1;
+					}
+
+					if (optval != NULL) {
+						if (!samearg) {
+							i += 1;
+						}
+						break;
 					}
 				}
 			}
@@ -196,6 +303,20 @@ _long_opt_argument_boolean:
 	if (ping->host == NULL) {
 		ERR("missing host");
 		return -1;
+	}
+
+	if (ping->flags.data_size > 0) {
+		ping->data_buffer = malloc((size_t)ping->flags.data_size);
+		if (ping->data_buffer == NULL) {
+			ERR("cannot allocate data buffer: %m");
+			return -1;
+		}
+
+		for (uint16_t i = 0; i < ping->flags.data_size; i += 1) {
+			ping->data_buffer[i] = (uint8_t)(i % 255);
+		}
+	} else {
+		ping->data_buffer = NULL;
 	}
 
 	return 0;
