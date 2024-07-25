@@ -1,5 +1,5 @@
 # ft_ping
-Minimalistic inetutils-ping(1) implementation
+Simplistic inetutils-ping(1) implementation
 
 ## Supported options
 
