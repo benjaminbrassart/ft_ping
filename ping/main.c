@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/04/14 15:03:37 by bbrassar          #+#    #+#             */
-/*   Updated: 2024/04/27 15:23:33 by bbrassar         ###   ########.fr       */
+/*   Updated: 2024/08/30 18:43:47 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,19 @@ int main(int argc, char const *argv[])
 	}
 
 	if (ping.flags.help) {
-		printf("Usage: ft_ping [-v] <host>\n");
+		printf("Usage: ft_ping [options...] <host>\n");
+		printf("\n");
+		printf("Options:\n");
+
+		printf(" -?, --help         show this help and exit\n");
+		printf(" -V, --version      show version and exit\n");
+		printf(" -f, --flood        send packets without waiting\n");
+		printf(" -d, --debug        enable SO_DEBUG socket option \n");
+		printf(" -v, --verbose      print information on packet errors\n");
+		printf(" -q, --quiet        print only header and summary\n");
+		printf(" -s, --size         set ICMP packet data size\n");
+		printf("     --ttl <ttl>    set IP Time to Live\n");
+
 		result = 0;
 		goto _free_arguments;
 	}
