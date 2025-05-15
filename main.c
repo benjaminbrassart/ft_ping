@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/15 16:27:39 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/15 16:28:39 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#define ERR(Fmt, ...) (fprintf(stderr, "ft_ping: " Fmt, ##__VA_ARGS__))
+#define ERR(Fmt, ...) (fprintf(stderr, "ft_ping: " Fmt "\n", ##__VA_ARGS__))
 
 struct flags {
 	unsigned verbose : 1;
