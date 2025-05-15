@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/15 17:48:53 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/15 17:50:27 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -371,7 +371,7 @@ static int context_execute(struct ping_context *ctx)
 	}
 
 	while (ctx->running) {
-		epr = epoll_wait(ctx->epoll, ev, ec, 0);
+		epr = epoll_wait(ctx->epoll, ev, ec, -1);
 		if (epr == -1) {
 			ERR("failed to poll: %m");
 			return EXIT_FAILURE;
