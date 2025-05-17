@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/17 21:21:14 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/17 21:34:34 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -111,11 +111,13 @@ static void fill_payload(uint8_t *payload, size_t len, char const pattern[])
 	size_t j = 0;
 
 	for (size_t i = 0; i < len; i += 1) {
-		payload[i] = hex_to_nibble(pattern[j]) << 4;
+		payload[i] = hex_to_nibble(pattern[j]);
 		if (j + 1 < pattern_len) {
-			payload[i] |= (hex_to_nibble(pattern[j + 1]) & 0x0F);
+			j += 1;
+			payload[i] <<= 4;
+			payload[i] |= (hex_to_nibble(pattern[j]) & 0x0F);
 		}
-		j = (j + 2) % pattern_len;
+		j = (j + 1) % pattern_len;
 	}
 }
 
