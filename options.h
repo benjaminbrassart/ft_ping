@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:00:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/17 17:34:44 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/17 19:49:09 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,8 @@ struct options {
 	unsigned routing_ignore : 1;
 	size_t size;
 	unsigned verbose : 1;
-	char const *hostname;
+	char const **hostnames;
+	size_t hostname_count;
 };
 
 int opts_parse(int argc, char const *argv[], struct options *opt_out);

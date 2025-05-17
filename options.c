@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/17 18:03:04 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/17 21:03:34 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 #include "args.h"
 #include "message.h"
 
+#include <ctype.h>
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -110,7 +111,13 @@ static int opt_interval(struct opt_parser *parser, char const *value)
 
 static int opt_pattern(struct opt_parser *parser, char const *value)
 {
-	// TODO validate pattern
+	for (size_t i = 0; value[i] != '\0'; i += 1) {
+		if (!isxdigit(value[i])) {
+			ERR("pattern: error near %c", value[i]);
+			return EXIT_FAILURE;
+		}
+	}
+
 	parser->opts.pattern = value;
 	return EXIT_SUCCESS;
 }
@@ -237,7 +244,10 @@ static char const *opt_get_value(struct opt_parser *parser, char const s[],
 	}
 
 	if (consume_next) {
-		return argit_next(&parser->it);
+		char const *next = argit_peek(&parser->it);
+
+		argit_shift(&parser->it);
+		return next;
 	}
 
 	return NULL;
@@ -273,8 +283,7 @@ static struct option_table const *opt_get_long(char const name[])
 
 static int opts_parse_next(struct opt_parser *parser)
 {
-	struct options *opts = &parser->opts;
-	char const *arg = argit_next(&parser->it);
+	char const *arg = argit_peek(&parser->it);
 
 	if (arg == NULL) {
 		DBG("end");
@@ -284,12 +293,7 @@ static int opts_parse_next(struct opt_parser *parser)
 	DBG("arg = %s, accept = %d", arg, parser->accept_opt);
 
 	if (!parser->accept_opt || arg[0] != '-' || arg[1] == '\0') {
-		if (opts->hostname != NULL) {
-			ERR("too many hosts");
-			return EXIT_FAILURE;
-		}
-
-		opts->hostname = arg;
+		argit_advance(&parser->it);
 		return EXIT_SUCCESS;
 	}
 
@@ -340,14 +344,17 @@ static int opts_parse_next(struct opt_parser *parser)
 		unsigned value_same_arg = 0;
 		char const *value = NULL;
 
+		argit_shift(&parser->it);
+
 		if (entry->value_required) {
 			if (arg[i + 1] == '\0') {
-				value = argit_next(&parser->it);
+				value = argit_peek(&parser->it);
 				if (value == NULL) {
 					ERR("option requires an argument -- '%c'",
 					    entry->name_short);
 					return EXIT_FAILURE;
 				}
+				argit_shift(&parser->it);
 			} else {
 				value = &arg[i + 1];
 				value_same_arg = 1;
@@ -374,7 +381,7 @@ static struct options const OPTS_DEFAULT = {
 		.tv_nsec = 0,
 	},
 	.linger = {
-		.tv_sec = 1,
+		.tv_sec = 0,
 		.tv_nsec = 0,
 	},
 	.pattern = NULL,
@@ -382,7 +389,7 @@ static struct options const OPTS_DEFAULT = {
 	.routing_ignore = 0,
 	.size = 56,
 	.verbose = 0,
-	.hostname = NULL,
+	.hostnames = NULL,
 };
 
 int opts_parse(int argc, char const *argv[], struct options *opt_out)
@@ -396,7 +403,7 @@ int opts_parse(int argc, char const *argv[], struct options *opt_out)
 
 	DBG("init");
 	argit_init(&parser.it, argc, argv);
-	(void)argit_next(&parser.it);
+	argit_advance(&parser.it);
 
 	for (;;) {
 		DBG("next arg");
@@ -412,11 +419,8 @@ int opts_parse(int argc, char const *argv[], struct options *opt_out)
 		return res;
 	}
 
-	if (parser.opts.hostname == NULL) {
-		ERR("no host to ping");
-		return EXIT_FAILURE;
-	}
-
+	parser.opts.hostname_count = (size_t)(parser.it.length - 1);
+	parser.opts.hostnames = &parser.it.args[1];
 	*opt_out = parser.opts;
 	return EXIT_SUCCESS;
 }

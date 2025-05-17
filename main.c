@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/17 17:21:15 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/17 21:21:14 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,7 @@ struct ping_stats {
 
 struct ping_context {
 	struct options const *opts;
+	char const *hostname;
 	struct ping_stats stats;
 	unsigned running : 1;
 	int sock_fd;
@@ -82,7 +83,44 @@ static int resolve_hostname(char const hostname[], struct sockaddr_in *addr)
 	return EXIT_SUCCESS;
 }
 
-static int context_create(struct ping_context *ctx, struct options const *opts)
+static uint8_t hex_to_nibble(char c)
+{
+	if (c >= '0' && c <= '9') {
+		return c - '0';
+	}
+
+	if (c >= 'a' && c <= 'f') {
+		return c - 'a' + 0xa;
+	}
+
+	if (c >= 'A' && c <= 'F') {
+		return c - 'A' + 0xa;
+	}
+
+	return 0xff;
+}
+
+static void fill_payload(uint8_t *payload, size_t len, char const pattern[])
+{
+	size_t pattern_len = strlen(pattern);
+
+	if (pattern_len == 0) {
+		return;
+	}
+
+	size_t j = 0;
+
+	for (size_t i = 0; i < len; i += 1) {
+		payload[i] = hex_to_nibble(pattern[j]) << 4;
+		if (j + 1 < pattern_len) {
+			payload[i] |= (hex_to_nibble(pattern[j + 1]) & 0x0F);
+		}
+		j = (j + 2) % pattern_len;
+	}
+}
+
+static int context_create(struct ping_context *ctx, struct options const *opts,
+			  char const hostname[])
 {
 	uint8_t *payload = NULL;
 	int epoll_fd = -1;
@@ -97,13 +135,17 @@ static int context_create(struct ping_context *ctx, struct options const *opts)
 	sigaddset(&handled_signals, SIGINT);
 
 	do {
-		payload = malloc(opts->size);
+		payload = calloc(opts->size, 1);
 		if (payload == NULL) {
 			break;
 		}
 
-		for (size_t i = 0; i < opts->size; i += 1) {
-			payload[i] = (uint8_t)i;
+		if (opts->pattern == NULL) {
+			for (size_t i = 0; i < opts->size; i += 1) {
+				payload[i] = (uint8_t)i;
+			}
+		} else {
+			fill_payload(payload, opts->size, opts->pattern);
 		}
 
 		epoll_fd = epoll_create1(EPOLL_CLOEXEC);
@@ -186,7 +228,7 @@ static int context_create(struct ping_context *ctx, struct options const *opts)
 			break;
 		}
 
-		res = resolve_hostname(opts->hostname, &ctx->addr);
+		res = resolve_hostname(hostname, &ctx->addr);
 		if (res != EXIT_SUCCESS) {
 			break;
 		}
@@ -203,6 +245,7 @@ static int context_create(struct ping_context *ctx, struct options const *opts)
 			.time_sum_squared = 0.0,
 		};
 		ctx->opts = opts;
+		ctx->hostname = hostname;
 		ctx->running = 1;
 		ctx->epoll_fd = epoll_fd;
 		ctx->sock_fd = sock_fd;
@@ -247,8 +290,8 @@ static void context_free(struct ping_context *ctx)
 
 static void print_init_message(struct ping_context *ctx)
 {
-	printf("PING %s (%s): %u data bytes\n", ctx->opts->hostname,
-	       ctx->addr_s, 56);
+	printf("PING %s (%s): %zu data bytes\n", ctx->hostname, ctx->addr_s,
+	       ctx->opts->size);
 }
 
 static void print_summary(struct ping_context *ctx)
@@ -258,7 +301,7 @@ static void print_summary(struct ping_context *ctx)
 	double time_avg = stats->time_sum / (double)stats->recv_count;
 	double time_stddev = 0;
 
-	printf("--- %s ping statistics ---\n", ctx->opts->hostname);
+	printf("--- %s ping statistics ---\n", ctx->hostname);
 	printf("%zu packets transmitted, %zu packets received, %u%% packet loss\n",
 	       stats->send_count, stats->recv_count, packet_loss);
 	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f\n",
@@ -612,13 +655,19 @@ int main(int argc, char const *argv[])
 
 	struct ping_context ctx;
 
-	res = context_create(&ctx, &opts);
-	if (res != EXIT_SUCCESS) {
-		return res;
+	printf("%zu hostnames:\n", opts.hostname_count);
+	for (size_t i = 0; i < opts.hostname_count; i += 1) {
+		res = context_create(&ctx, &opts, opts.hostnames[i]);
+		if (res != EXIT_SUCCESS) {
+			break;
+		}
+
+		res = context_execute(&ctx);
+		context_free(&ctx);
+		if (res != EXIT_SUCCESS) {
+			break;
+		}
 	}
 
-	res = context_execute(&ctx);
-
-	context_free(&ctx);
 	return res;
 }
