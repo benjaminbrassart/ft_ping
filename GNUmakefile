@@ -6,7 +6,7 @@
 #    By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/05/14 13:29:12 by bbrassar          #+#    #+#              #
-#    Updated: 2025/05/15 16:17:57 by bbrassar         ###   ########.fr        #
+#    Updated: 2025/05/17 17:52:46 by bbrassar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,14 +14,14 @@ override MAKEFILE := $(lastword $(MAKEFILE_LIST))
 
 NAME := ft_ping
 
-override SRC := main.c
+override SRC := main.c args.c options.c
 override OBJ := $(SRC:%.c=%.c.o)
 override DEP := $(OBJ:.o=.d)
 
 override CFLAGS += -Wall -Wextra -c
 override CPPFLAGS += -MMD -MP
 override LDFLAGS ?=
-override LDLIBS ?=
+override LDLIBS ?= -lm
 
 $(NAME): $(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LDLIBS) -o $@

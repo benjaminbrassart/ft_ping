@@ -6,9 +6,12 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/17 16:07:31 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/17 17:21:15 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
+#include "message.h"
+#include "options.h"
 
 #include <signal.h>
 #include <stdint.h>
@@ -26,19 +29,6 @@
 #include <sys/timerfd.h>
 #include <time.h>
 #include <unistd.h>
-
-#define DBG(Fmt, ...) (fprintf(stderr, "[DEBUG]: " Fmt "\n", ##__VA_ARGS__))
-#define ERR(Fmt, ...) (fprintf(stderr, "ft_ping: " Fmt "\n", ##__VA_ARGS__))
-
-struct options {
-	unsigned verbose : 1;
-	unsigned help : 1;
-	unsigned quiet : 1;
-	uint8_t ttl;
-	size_t payload_size;
-	struct timespec interval;
-	char const *hostname;
-};
 
 struct ping_stats {
 	size_t send_count;
@@ -70,27 +60,6 @@ struct packet_info {
 	uint8_t const *raw;
 	size_t len;
 };
-
-static struct options const OPTS_DEFAULT = {
-	.help = 0,
-	.verbose = 0,
-	.quiet = 0,
-	.payload_size = 56,
-	.ttl = 0,
-	.interval = {
-		.tv_sec = 1,
-		.tv_nsec = 0,
-	},
-	.hostname = NULL,
-};
-
-static int opts_parse(int argc, char *const argv[], struct options *opt_out)
-{
-	// TODO actually parse the arguments
-	*opt_out = OPTS_DEFAULT;
-	opt_out->hostname = "1.1.1.1";
-	return EXIT_SUCCESS;
-}
 
 static int resolve_hostname(char const hostname[], struct sockaddr_in *addr)
 {
@@ -128,12 +97,12 @@ static int context_create(struct ping_context *ctx, struct options const *opts)
 	sigaddset(&handled_signals, SIGINT);
 
 	do {
-		payload = malloc(opts->payload_size);
+		payload = malloc(opts->size);
 		if (payload == NULL) {
 			break;
 		}
 
-		for (size_t i = 0; i < opts->payload_size; i += 1) {
+		for (size_t i = 0; i < opts->size; i += 1) {
 			payload[i] = (uint8_t)i;
 		}
 
@@ -240,7 +209,7 @@ static int context_create(struct ping_context *ctx, struct options const *opts)
 		ctx->timer_fd = timer_fd;
 		ctx->signal_fd = signal_fd;
 		ctx->payload = payload;
-		ctx->payload_size = opts->payload_size;
+		ctx->payload_size = opts->size;
 		ctx->pid = getpid();
 		ctx->seq = 0;
 		return EXIT_SUCCESS;
@@ -626,7 +595,7 @@ static int context_execute(struct ping_context *ctx)
 	return res;
 }
 
-int main(int argc, char *const argv[])
+int main(int argc, char const *argv[])
 {
 	struct options opts;
 	int res;
