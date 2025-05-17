@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/15 17:50:27 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/17 13:31:06 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,30 +23,46 @@
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
 #include <sys/socket.h>
+#include <sys/timerfd.h>
+#include <time.h>
 #include <unistd.h>
 
+#define DBG(Fmt, ...) (fprintf(stderr, "[DEBUG]: " Fmt "\n", ##__VA_ARGS__))
 #define ERR(Fmt, ...) (fprintf(stderr, "ft_ping: " Fmt "\n", ##__VA_ARGS__))
 
-struct flags {
+struct options {
 	unsigned verbose : 1;
 	unsigned help : 1;
+	unsigned quiet : 1;
+	uint8_t ttl;
+	size_t payload_size;
+	struct timespec interval;
+	char const *hostname;
 };
 
-struct options {
-	struct flags flags;
-	char const *hostname;
+struct ping_stats {
+	size_t send_count;
+	size_t recv_count;
+	double time_min;
+	double time_max;
+	double time_sum;
+	double time_sum_squared;
 };
 
 struct ping_context {
 	struct options const *opts;
+	struct ping_stats stats;
 	unsigned running : 1;
-	int sock;
-	int epoll;
-	int sigfd;
+	int sock_fd;
+	int epoll_fd;
+	int timer_fd;
+	int signal_fd;
 	struct sockaddr_in addr;
 	char addr_s[INET_ADDRSTRLEN];
 	pid_t pid;
 	uint16_t seq;
+	size_t payload_size;
+	uint8_t *payload;
 };
 
 struct packet_info {
@@ -56,9 +72,14 @@ struct packet_info {
 };
 
 static struct options const OPTS_DEFAULT = {
-	.flags = {
-		.help = 0,
-		.verbose = 0,
+	.help = 0,
+	.verbose = 0,
+	.quiet = 0,
+	.payload_size = 56,
+	.ttl = 1,
+	.interval = {
+		.tv_sec = 1,
+		.tv_nsec = 0,
 	},
 	.hostname = NULL,
 };
@@ -94,9 +115,11 @@ static int resolve_hostname(char const hostname[], struct sockaddr_in *addr)
 
 static int context_create(struct ping_context *ctx, struct options const *opts)
 {
+	uint8_t *payload = NULL;
 	int epoll_fd = -1;
 	int sock_fd = -1;
-	int sig_fd = -1;
+	int timer_fd = -1;
+	int signal_fd = -1;
 	int res = EXIT_FAILURE;
 
 	sigset_t handled_signals;
@@ -105,6 +128,15 @@ static int context_create(struct ping_context *ctx, struct options const *opts)
 	sigaddset(&handled_signals, SIGINT);
 
 	do {
+		payload = malloc(opts->payload_size);
+		if (payload == NULL) {
+			break;
+		}
+
+		for (size_t i = 0; i < opts->payload_size; i += 1) {
+			payload[i] = (uint8_t)i;
+		}
+
 		epoll_fd = epoll_create1(EPOLL_CLOEXEC);
 		if (epoll_fd == -1) {
 			ERR("failed to create epoll: %m");
@@ -115,6 +147,14 @@ static int context_create(struct ping_context *ctx, struct options const *opts)
 		if (sock_fd == -1) {
 			ERR("failed to create socket: %m");
 			break;
+		}
+
+		if (opts->ttl != 0) {
+			if (setsockopt(sock_fd, IPPROTO_IP, IP_TTL, &opts->ttl,
+				       sizeof(opts->ttl)) == -1) {
+				ERR("failed to set TTL: %m");
+				break;
+			}
 		}
 
 		struct epoll_event sock_event = {
@@ -128,18 +168,45 @@ static int context_create(struct ping_context *ctx, struct options const *opts)
 			break;
 		}
 
-		sig_fd = signalfd(-1, &handled_signals, SFD_CLOEXEC);
-		if (sig_fd == -1) {
+		timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
+		if (timer_fd == -1) {
+			ERR("failed to create timer fd: %m");
+			break;
+		}
+
+		struct itimerspec timer_spec = {
+			.it_interval = opts->interval,
+			.it_value = { .tv_sec = 0, .tv_nsec = 1 },
+		};
+
+		if (timerfd_settime(timer_fd, 0, &timer_spec, NULL) == -1) {
+			ERR("failed to set timer interval: %m");
+			break;
+		}
+
+		struct epoll_event timer_event = {
+			.events = EPOLLIN,
+			.data = { .fd = timer_fd },
+		};
+
+		if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timer_fd,
+			      &timer_event) == -1) {
+			ERR("failed to poll timer fd: %m");
+			break;
+		}
+
+		signal_fd = signalfd(-1, &handled_signals, SFD_CLOEXEC);
+		if (signal_fd == -1) {
 			ERR("failed to create signal fd: %m");
 			break;
 		}
 
 		struct epoll_event sig_event = {
 			.events = EPOLLIN,
-			.data = { .fd = sig_fd },
+			.data = { .fd = signal_fd },
 		};
 
-		if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sig_fd, &sig_event) ==
+		if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, signal_fd, &sig_event) ==
 		    -1) {
 			ERR("failed to poll signal fd: %m");
 			break;
@@ -158,15 +225,34 @@ static int context_create(struct ping_context *ctx, struct options const *opts)
 		inet_ntop(AF_INET, &ctx->addr.sin_addr.s_addr, ctx->addr_s,
 			  INET_ADDRSTRLEN);
 
+		ctx->stats = (struct ping_stats){
+			.recv_count = 0,
+			.send_count = 0,
+			.time_max = 0.0,
+			.time_min = 0.0,
+			.time_sum = 0.0,
+			.time_sum_squared = 0.0,
+		};
 		ctx->opts = opts;
 		ctx->running = 1;
-		ctx->sock = sock_fd;
-		ctx->sigfd = sig_fd;
-		ctx->epoll = epoll_fd;
+		ctx->epoll_fd = epoll_fd;
+		ctx->sock_fd = sock_fd;
+		ctx->timer_fd = timer_fd;
+		ctx->signal_fd = signal_fd;
+		ctx->payload = payload;
+		ctx->payload_size = opts->payload_size;
 		ctx->pid = getpid();
 		ctx->seq = 0;
 		return EXIT_SUCCESS;
 	} while (0);
+
+	if (signal_fd != -1) {
+		close(signal_fd);
+	}
+
+	if (timer_fd != -1) {
+		close(timer_fd);
+	}
 
 	if (sock_fd != -1) {
 		close(sock_fd);
@@ -176,12 +262,18 @@ static int context_create(struct ping_context *ctx, struct options const *opts)
 		close(epoll_fd);
 	}
 
+	free(payload);
+
 	return res;
 }
 
 static void context_free(struct ping_context *ctx)
 {
-	close(ctx->sock);
+	close(ctx->sock_fd);
+	close(ctx->signal_fd);
+	close(ctx->timer_fd);
+	close(ctx->epoll_fd);
+	free(ctx->payload);
 }
 
 static void print_init_message(struct ping_context *ctx)
@@ -192,11 +284,16 @@ static void print_init_message(struct ping_context *ctx)
 
 static void print_summary(struct ping_context *ctx)
 {
+	struct ping_stats const *stats = &ctx->stats;
+	unsigned int packet_loss = 0;
+	double time_avg = stats->time_sum / (double)stats->recv_count;
+	double time_stddev = 0;
+
 	printf("--- %s ping statistics ---\n", ctx->opts->hostname);
-	printf("%u packets transmitted, %u packets received, %u%% packet loss\n",
-	       0, 0, 100);
-	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f\n", 0.0,
-	       0.0, 0.0, 0.0);
+	printf("%zu packets transmitted, %zu packets received, %u%% packet loss\n",
+	       stats->send_count, stats->recv_count, packet_loss);
+	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f\n",
+	       stats->time_min, time_avg, stats->time_max, time_stddev);
 }
 
 static uint8_t *recvfrom_peeked(int fd, size_t *len, struct sockaddr *addr,
@@ -255,6 +352,7 @@ static int send_ping(struct ping_context *ctx)
 	};
 	struct iovec iov[] = {
 		{ &icmp, sizeof(icmp) },
+		{ ctx->payload, ctx->payload_size },
 	};
 	struct msghdr msg = {
 		.msg_iov = iov,
@@ -267,7 +365,7 @@ static int send_ping(struct ping_context *ctx)
 
 	ssize_t sc;
 
-	sc = sendmsg(ctx->sock, &msg, 0);
+	sc = sendmsg(ctx->sock_fd, &msg, 0);
 	if (sc == -1) {
 		return EXIT_FAILURE;
 	}
@@ -276,27 +374,120 @@ static int send_ping(struct ping_context *ctx)
 	return EXIT_SUCCESS;
 }
 
-static int handle_raw_packet(uint8_t const *raw, size_t len,
-			     struct sockaddr_storage const *addr)
+static char const *icmp_code_tostring(uint8_t code, uint8_t type)
 {
-	void const *raw_addr;
+	switch (code) {
+	case ICMP_DEST_UNREACH:
+		switch (type) {
+		case ICMP_NET_UNREACH:
+			return "Network unreachable";
+		case ICMP_HOST_UNREACH:
+			return "Host unreachable";
+		case ICMP_PROT_UNREACH:
+			return "Protocol unreachable";
+		case ICMP_PORT_UNREACH:
+			return "Port unreachable";
+		case ICMP_FRAG_NEEDED:
+			return "Fragmentation needed";
+		case ICMP_SR_FAILED:
+			return "Source Route failed";
+		case ICMP_NET_UNKNOWN:
+			return "Network unknown";
+		case ICMP_HOST_UNKNOWN:
+			return "Host unknown";
+		case ICMP_HOST_ISOLATED:
+			return "Host isolated";
+		case ICMP_NET_ANO:
+			return "Network anonymous";
+		case ICMP_HOST_ANO:
+			return "Host anonymous";
+		case ICMP_NET_UNR_TOS:
+			return "Network unreachable for TOS";
+		case ICMP_HOST_UNR_TOS:
+			return "Host unreachable for TOS";
+		case ICMP_PKT_FILTERED:
+			return "Packet filtered";
+		case ICMP_PREC_VIOLATION:
+			return "Host precedence violation";
+		case ICMP_PREC_CUTOFF:
+			return "Precedence cutoff in effect";
+		default:
+			return NULL;
+		}
+
+	case ICMP_SOURCE_QUENCH:
+		return "Source quench";
+
+	case ICMP_REDIRECT:
+		return "Redirected";
+
+	case ICMP_TIME_EXCEEDED:
+		return "Time to live exceeded";
+
+	case ICMP_PARAMETERPROB:
+		return "Parameter problem";
+
+	default:
+		return NULL;
+	}
+}
+
+static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
+			     size_t len, struct sockaddr_in const *addr)
+{
 	char addr_s[INET6_ADDRSTRLEN];
 
-	switch (addr->ss_family) {
-	case AF_INET:
-		raw_addr = &((struct sockaddr_in *)&addr)->sin_addr.s_addr;
+	inet_ntop(AF_INET, &addr->sin_addr, addr_s, sizeof(addr_s));
+
+	struct iphdr const *ip = (struct iphdr *)raw;
+	struct icmphdr const *icmp = (struct icmphdr *)(raw + sizeof(*ip));
+	uint8_t const *payload = (raw + sizeof(*ip) + sizeof(*icmp));
+
+	switch (icmp->type) {
+	case ICMP_ECHO:
+	case ICMP_TIMESTAMP:
+	case ICMP_TIMESTAMPREPLY:
+	case ICMP_ADDRESS:
+	case ICMP_ADDRESSREPLY:
+		return EXIT_SUCCESS;
+
+	case ICMP_ECHOREPLY: {
+		if (icmp->un.echo.id != (uint16_t)ctx->pid) {
+			return EXIT_SUCCESS;
+		}
+
+		printf("%zu bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms\n",
+		       len - sizeof(*ip), addr_s, icmp->un.echo.sequence,
+		       ip->ttl, 0.0);
+
 		break;
-	case AF_INET6:
-		raw_addr = &((struct sockaddr_in6 *)&addr)->sin6_addr;
-		break;
-	default: // what the fuck?
-		return EXIT_FAILURE;
 	}
 
-	inet_ntop(addr->ss_family, raw_addr, addr_s, sizeof(addr_s));
+	default: {
+		struct iphdr const *orig_ip = (struct iphdr *)payload;
+		struct icmphdr const *orig_icmp =
+			(struct icmphdr *)(payload + sizeof(*orig_ip));
 
-	printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n", len,
-	       addr_s, 0, 0, 0.0);
+		if (orig_icmp->code != ICMP_ECHO) {
+			return EXIT_SUCCESS;
+		}
+
+		if (orig_icmp->un.echo.id != (uint16_t)ctx->pid) {
+			return EXIT_SUCCESS;
+		}
+
+		char const *message =
+			icmp_code_tostring(icmp->code, icmp->type);
+
+		if (message == NULL) {
+			return EXIT_SUCCESS;
+		}
+
+		printf("%zu bytes from %s: %s\n", len - sizeof(*ip), addr_s,
+		       message);
+		break;
+	}
+	}
 
 	return EXIT_SUCCESS;
 }
@@ -305,18 +496,18 @@ static int context_handle_socket(struct ping_context *ctx)
 {
 	size_t buf_len;
 	uint8_t *buf;
-	struct sockaddr_storage addr;
+	struct sockaddr_in addr;
 	socklen_t addr_len = sizeof(addr);
 	int res = EXIT_FAILURE;
 
 	do {
-		buf = recvfrom_peeked(ctx->sock, &buf_len,
+		buf = recvfrom_peeked(ctx->sock_fd, &buf_len,
 				      (struct sockaddr *)&addr, &addr_len);
 		if (buf == NULL) {
 			break;
 		}
 
-		res = handle_raw_packet(buf, buf_len, &addr);
+		res = handle_raw_packet(ctx, buf, buf_len, &addr);
 	} while (0);
 
 	free(buf);
@@ -328,12 +519,32 @@ static int context_handle_signal(struct ping_context *ctx)
 	struct signalfd_siginfo siginfo;
 	ssize_t rr;
 
-	rr = read(ctx->sigfd, &siginfo, sizeof(siginfo));
+	rr = read(ctx->signal_fd, &siginfo, sizeof(siginfo));
 	if (rr == -1) {
 		return EXIT_FAILURE;
 	}
 
 	ctx->running = 0;
+	return EXIT_SUCCESS;
+}
+
+static int context_handle_timer(struct ping_context *ctx)
+{
+	uint64_t buf;
+	ssize_t rr;
+
+	rr = read(ctx->timer_fd, &buf, sizeof(buf));
+	if (rr == -1) {
+		return EXIT_FAILURE;
+	}
+
+	int res;
+
+	res = send_ping(ctx);
+	if (res != EXIT_SUCCESS) {
+		return res;
+	}
+
 	return EXIT_SUCCESS;
 }
 
@@ -346,9 +557,11 @@ static int context_handle_event(struct ping_context *ctx,
 
 	int fd = ev->data.fd;
 
-	if (fd == ctx->sock) {
+	if (fd == ctx->sock_fd) {
 		return context_handle_socket(ctx);
-	} else if (fd == ctx->sigfd) {
+	} else if (fd == ctx->timer_fd) {
+		return context_handle_timer(ctx);
+	} else if (fd == ctx->signal_fd) {
 		return context_handle_signal(ctx);
 	} else {
 		ERR("unhandled file descriptor: %d", fd);
@@ -359,25 +572,24 @@ static int context_handle_event(struct ping_context *ctx,
 static int context_execute(struct ping_context *ctx)
 {
 	int epr;
-	struct epoll_event ev[2];
+	struct epoll_event ev[3];
 	int ec = sizeof(ev) / sizeof(ev[0]);
 	int res = EXIT_SUCCESS;
 
 	print_init_message(ctx);
 
-	res = send_ping(ctx);
-	if (res != EXIT_SUCCESS) {
-		return EXIT_FAILURE;
-	}
-
 	while (ctx->running) {
-		epr = epoll_wait(ctx->epoll, ev, ec, -1);
+		epr = epoll_wait(ctx->epoll_fd, ev, ec, -1);
 		if (epr == -1) {
 			ERR("failed to poll: %m");
 			return EXIT_FAILURE;
 		}
 
-		for (int i = 0; ctx->running && i < epr; i += 1) {
+		for (int i = 0; i < epr; i += 1) {
+			if (!ctx->running) {
+				break;
+			}
+
 			res = context_handle_event(ctx, &ev[i]);
 			if (res != EXIT_SUCCESS) {
 				return res;
@@ -399,7 +611,7 @@ int main(int argc, char *const argv[])
 		return res;
 	}
 
-	if (opts.flags.help) {
+	if (opts.help) {
 		// TODO print help
 		return EXIT_SUCCESS;
 	}
