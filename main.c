@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/17 16:06:41 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/17 16:07:31 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -76,7 +76,7 @@ static struct options const OPTS_DEFAULT = {
 	.verbose = 0,
 	.quiet = 0,
 	.payload_size = 56,
-	.ttl = 1,
+	.ttl = 0,
 	.interval = {
 		.tv_sec = 1,
 		.tv_nsec = 0,
