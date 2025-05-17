@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/17 13:31:06 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/17 16:06:41 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -333,8 +333,33 @@ static uint8_t *recvfrom_peeked(int fd, size_t *len, struct sockaddr *addr,
 
 static uint16_t compute_icmp_checksum(struct msghdr const *msg)
 {
-	// TODO compute checksum
-	return 0;
+	uint32_t sum = 0;
+
+	for (size_t i = 0; i < msg->msg_iovlen; i++) {
+		struct iovec const *iov = &msg->msg_iov[i];
+		uint8_t const *data = iov->iov_base;
+		size_t len = iov->iov_len;
+
+		/* Sum up all 16-bit words */
+		while (len > 1) {
+			sum += (uint16_t)((data[0] << 8) | data[1]);
+			data += 2;
+			len -= 2;
+		}
+
+		/* If there's a trailing byte, pad with zero */
+		if (len == 1) {
+			sum += (uint16_t)(data[0] << 8);
+		}
+	}
+
+	/* Fold 32-bit sum to 16 bits */
+	while (sum >> 16) {
+		sum = (sum & 0xFFFF) + (sum >> 16);
+	}
+
+	/* One's complement and return */
+	return htons((uint16_t)~sum);
 }
 
 static int send_ping(struct ping_context *ctx)
