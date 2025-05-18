@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/17 21:34:34 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/18 11:37:44 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -651,7 +651,7 @@ int main(int argc, char const *argv[])
 	}
 
 	if (opts.help) {
-		// TODO print help
+		opts_print_help();
 		return EXIT_SUCCESS;
 	}
 

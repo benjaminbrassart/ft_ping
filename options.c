@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/17 21:03:34 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/18 12:08:57 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,9 +17,12 @@
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tgmath.h>
+
+#define sizeof_array(Arr) (sizeof(Arr) / sizeof(Arr[0]))
 
 struct opt_parser {
 	struct arg_iterator it;
@@ -34,6 +37,8 @@ struct option_table {
 	char name_short;
 	unsigned value_required;
 	option_handler_func_t *handler;
+	char const *param_name;
+	char const *description;
 };
 
 static int opt_ttl(struct opt_parser *parser, char const *value)
@@ -192,17 +197,95 @@ static int opt_help(struct opt_parser *parser, char const *value)
 }
 
 static struct option_table const OPTION_TABLE[] = {
-	{ "ttl", '\0', 1, opt_ttl },
-	{ "count", 'c', 1, opt_count },
-	{ "debug", 'd', 0, opt_debug },
-	{ "interval", 'i', 1, opt_interval },
-	{ "pattern", 'p', 1, opt_pattern },
-	{ "quiet", 'q', 0, opt_quiet },
-	{ "routing-ignore", 'r', 0, opt_routing_ignore },
-	{ "size", 's', 1, opt_size },
-	{ "verbose", 'v', 0, opt_verbose },
-	{ "linger", 'W', 1, opt_linger },
-	{ "help", '?', 0, opt_help },
+	{
+		.name_long = "ttl",
+		.name_short = '\0',
+		.value_required = 1,
+		.handler = opt_ttl,
+		.param_name = "N",
+		.description = "specify N as time-to-live",
+	},
+	{
+		.name_long = "count",
+		.name_short = 'c',
+		.value_required = 1,
+		.handler = opt_count,
+		.param_name = "NUMBER",
+		.description = "stop after sending NUMBER packets",
+	},
+	{
+		.name_long = "debug",
+		.name_short = 'd',
+		.value_required = 0,
+		.handler = opt_debug,
+		.param_name = NULL,
+		.description = "set the SO_DEBUG option",
+	},
+	{
+		.name_long = "interval",
+		.name_short = 'i',
+		.value_required = 1,
+		.handler = opt_interval,
+		.param_name = "NUMBER",
+		.description =
+			"wait NUMBER seconds between sending each packet",
+	},
+	{
+		.name_long = "pattern",
+		.name_short = 'p',
+		.value_required = 1,
+		.handler = opt_pattern,
+		.param_name = "PATTERN",
+		.description = "fill ICMP packet with given pattern (hex)",
+	},
+	{
+		.name_long = "quiet",
+		.name_short = 'q',
+		.value_required = 0,
+		.handler = opt_quiet,
+		.param_name = NULL,
+		.description = "quiet output",
+	},
+	{
+		.name_long = "routing-ignore",
+		.name_short = 'r',
+		.value_required = 0,
+		.handler = opt_routing_ignore,
+		.param_name = NULL,
+		.description = "send directly to a host on an attached network",
+	},
+	{
+		.name_long = "size",
+		.name_short = 's',
+		.value_required = 1,
+		.handler = opt_size,
+		.param_name = "NUMBER",
+		.description = "send NUMBER data octets",
+	},
+	{
+		.name_long = "verbose",
+		.name_short = 'v',
+		.value_required = 0,
+		.handler = opt_verbose,
+		.param_name = NULL,
+		.description = "verbose output",
+	},
+	{
+		.name_long = "linger",
+		.name_short = 'W',
+		.value_required = 1,
+		.handler = opt_linger,
+		.param_name = "N",
+		.description = "number of seconds to wait for response",
+	},
+	{
+		.name_long = "help",
+		.name_short = '?',
+		.value_required = 0,
+		.handler = opt_help,
+		.param_name = NULL,
+		.description = "give this help list",
+	},
 };
 
 /*
@@ -255,8 +338,7 @@ static char const *opt_get_value(struct opt_parser *parser, char const s[],
 
 static struct option_table const *opt_get_short(char c)
 {
-	for (size_t i = 0; i < (sizeof(OPTION_TABLE) / sizeof(OPTION_TABLE[0]));
-	     i += 1) {
+	for (size_t i = 0; i < sizeof_array(OPTION_TABLE); i += 1) {
 		if (c == OPTION_TABLE[i].name_short) {
 			return &OPTION_TABLE[i];
 		}
@@ -267,8 +349,7 @@ static struct option_table const *opt_get_short(char c)
 
 static struct option_table const *opt_get_long(char const name[])
 {
-	for (size_t i = 0; i < (sizeof(OPTION_TABLE) / sizeof(OPTION_TABLE[0]));
-	     i += 1) {
+	for (size_t i = 0; i < sizeof_array(OPTION_TABLE); i += 1) {
 		DBG("checking opt -%c --%s", OPTION_TABLE[i].name_short,
 		    OPTION_TABLE[i].name_long);
 		if (opt_equals(name, OPTION_TABLE[i].name_long)) {
@@ -423,4 +504,73 @@ int opts_parse(int argc, char const *argv[], struct options *opt_out)
 	parser.opts.hostnames = &parser.it.args[1];
 	*opt_out = parser.opts;
 	return EXIT_SUCCESS;
+}
+
+void opts_print_help(void)
+{
+	printf("Usage: ft_ping [OPTION...] HOST ...\n");
+	printf("Send ICMP ECHO_REQUEST packets to network hosts.\n");
+	printf("\n");
+	printf("Options:\n");
+
+	struct option_table const *longest_option = &OPTION_TABLE[0];
+	size_t longest_option_len = strlen(longest_option->name_long);
+
+	for (size_t i = 0; i < sizeof_array(OPTION_TABLE); i += 1) {
+		struct option_table const *option = &OPTION_TABLE[i];
+		size_t option_len = strlen(option->name_long);
+
+		if (option->param_name != NULL) {
+			// append "=<param_name>"
+			option_len += strlen(option->param_name) + 1;
+		}
+
+		if (option_len > longest_option_len) {
+			longest_option = option;
+			longest_option_len = option_len;
+		}
+	}
+
+	size_t left_column_length = longest_option_len + 4;
+
+	for (size_t i = 0; i < sizeof_array(OPTION_TABLE); i += 1) {
+		char buffer[81];
+		struct option_table const *option = &OPTION_TABLE[i];
+		char name_short_buf[4] = "   ";
+
+		buffer[0] = '\0';
+		if (option->name_short != '\0') {
+			name_short_buf[0] = '-';
+			name_short_buf[1] = option->name_short;
+			name_short_buf[2] = ',';
+			name_short_buf[3] = '\0';
+		}
+
+		strlcat(buffer, "  ", sizeof(buffer));
+		strlcat(buffer, name_short_buf, sizeof(buffer));
+		strlcat(buffer, " ", sizeof(buffer));
+
+		size_t option_len = 0;
+
+		if (option->name_long != NULL) {
+			strlcat(buffer, "--", sizeof(buffer));
+			strlcat(buffer, option->name_long, sizeof(buffer));
+
+			option_len = strlen(option->name_long);
+
+			if (option->param_name != NULL) {
+				// append "=<param_name>"
+				strlcat(buffer, "=", sizeof(buffer));
+				strlcat(buffer, option->param_name,
+					sizeof(buffer));
+				option_len += strlen(option->param_name) + 1;
+			}
+		}
+
+		for (size_t i = option_len; i < left_column_length; i += 1) {
+			strlcat(buffer, " ", sizeof(buffer));
+		}
+		strlcat(buffer, option->description, sizeof(buffer));
+		puts(buffer);
+	}
 }

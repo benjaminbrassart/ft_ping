@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:00:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/17 19:49:09 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/18 11:14:15 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,3 +33,5 @@ struct options {
 };
 
 int opts_parse(int argc, char const *argv[], struct options *opt_out);
+
+void opts_print_help(void);
