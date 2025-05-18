@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 11:37:44 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/18 12:09:58 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -655,9 +655,13 @@ int main(int argc, char const *argv[])
 		return EXIT_SUCCESS;
 	}
 
+	if (opts.hostname_count == 0) {
+		ERR("missing host operand");
+		return EXIT_FAILURE;
+	}
+
 	struct ping_context ctx;
 
-	printf("%zu hostnames:\n", opts.hostname_count);
 	for (size_t i = 0; i < opts.hostname_count; i += 1) {
 		res = context_create(&ctx, &opts, opts.hostnames[i]);
 		if (res != EXIT_SUCCESS) {
