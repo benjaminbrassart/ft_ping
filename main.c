@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 12:22:11 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/18 12:23:00 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,27 +14,7 @@
 #include "display.h"
 #include "options.h"
 
-#include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/ip_icmp.h>
-#include <sys/epoll.h>
-#include <sys/signalfd.h>
-#include <sys/socket.h>
-#include <sys/timerfd.h>
-#include <time.h>
-#include <unistd.h>
-
-struct packet_info {
-	char src[INET6_ADDRSTRLEN];
-	uint8_t const *raw;
-	size_t len;
-};
 
 int main(int argc, char const *argv[])
 {
