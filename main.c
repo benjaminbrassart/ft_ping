@@ -6,10 +6,11 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 12:09:58 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/18 12:13:29 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "icmp.h"
 #include "message.h"
 #include "options.h"
 
@@ -345,37 +346,6 @@ static uint8_t *recvfrom_peeked(int fd, size_t *len, struct sockaddr *addr,
 	return NULL;
 }
 
-static uint16_t compute_icmp_checksum(struct msghdr const *msg)
-{
-	uint32_t sum = 0;
-
-	for (size_t i = 0; i < msg->msg_iovlen; i++) {
-		struct iovec const *iov = &msg->msg_iov[i];
-		uint8_t const *data = iov->iov_base;
-		size_t len = iov->iov_len;
-
-		/* Sum up all 16-bit words */
-		while (len > 1) {
-			sum += (uint16_t)((data[0] << 8) | data[1]);
-			data += 2;
-			len -= 2;
-		}
-
-		/* If there's a trailing byte, pad with zero */
-		if (len == 1) {
-			sum += (uint16_t)(data[0] << 8);
-		}
-	}
-
-	/* Fold 32-bit sum to 16 bits */
-	while (sum >> 16) {
-		sum = (sum & 0xFFFF) + (sum >> 16);
-	}
-
-	/* One's complement and return */
-	return htons((uint16_t)~sum);
-}
-
 static int send_ping(struct ping_context *ctx)
 {
 	struct icmphdr icmp = {
@@ -411,64 +381,6 @@ static int send_ping(struct ping_context *ctx)
 
 	ctx->seq += 1;
 	return EXIT_SUCCESS;
-}
-
-static char const *icmp_code_tostring(uint8_t code, uint8_t type)
-{
-	switch (code) {
-	case ICMP_DEST_UNREACH:
-		switch (type) {
-		case ICMP_NET_UNREACH:
-			return "Network unreachable";
-		case ICMP_HOST_UNREACH:
-			return "Host unreachable";
-		case ICMP_PROT_UNREACH:
-			return "Protocol unreachable";
-		case ICMP_PORT_UNREACH:
-			return "Port unreachable";
-		case ICMP_FRAG_NEEDED:
-			return "Fragmentation needed";
-		case ICMP_SR_FAILED:
-			return "Source Route failed";
-		case ICMP_NET_UNKNOWN:
-			return "Network unknown";
-		case ICMP_HOST_UNKNOWN:
-			return "Host unknown";
-		case ICMP_HOST_ISOLATED:
-			return "Host isolated";
-		case ICMP_NET_ANO:
-			return "Network anonymous";
-		case ICMP_HOST_ANO:
-			return "Host anonymous";
-		case ICMP_NET_UNR_TOS:
-			return "Network unreachable for TOS";
-		case ICMP_HOST_UNR_TOS:
-			return "Host unreachable for TOS";
-		case ICMP_PKT_FILTERED:
-			return "Packet filtered";
-		case ICMP_PREC_VIOLATION:
-			return "Host precedence violation";
-		case ICMP_PREC_CUTOFF:
-			return "Precedence cutoff in effect";
-		default:
-			return NULL;
-		}
-
-	case ICMP_SOURCE_QUENCH:
-		return "Source quench";
-
-	case ICMP_REDIRECT:
-		return "Redirected";
-
-	case ICMP_TIME_EXCEEDED:
-		return "Time to live exceeded";
-
-	case ICMP_PARAMETERPROB:
-		return "Parameter problem";
-
-	default:
-		return NULL;
-	}
 }
 
 static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,

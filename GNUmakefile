@@ -6,7 +6,7 @@
 #    By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/05/14 13:29:12 by bbrassar          #+#    #+#              #
-#    Updated: 2025/05/17 17:52:46 by bbrassar         ###   ########.fr        #
+#    Updated: 2025/05/18 12:13:36 by bbrassar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -14,7 +14,7 @@ override MAKEFILE := $(lastword $(MAKEFILE_LIST))
 
 NAME := ft_ping
 
-override SRC := main.c args.c options.c
+override SRC := main.c args.c options.c icmp.c
 override OBJ := $(SRC:%.c=%.c.o)
 override DEP := $(OBJ:.o=.d)
 
