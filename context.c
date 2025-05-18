@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 12:21:21 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/18 13:09:30 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,15 +14,19 @@
 #include "display.h"
 #include "icmp.h"
 
+#include <inttypes.h>
+#include <netinet/in.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 #include <sys/epoll.h>
 #include <sys/signalfd.h>
+#include <sys/socket.h>
 #include <sys/timerfd.h>
 #include <unistd.h>
 
@@ -346,6 +350,110 @@ static int send_ping(struct ping_context *ctx)
 	return EXIT_SUCCESS;
 }
 
+static void dump_ip(struct iphdr const *ip)
+{
+#define FMT_VR " %" PRIx8
+	uint8_t const vr = ip->version;
+
+#define FMT_HL " %" PRIx8
+	uint8_t const hl = ip->ihl;
+
+#define FMT_TOS " %02" PRIx8
+	uint8_t const tos = ip->tos;
+
+#define FMT_LEN "%04" PRIx16
+	uint16_t const len = ip->tot_len;
+
+#define FMT_ID "%04" PRIx16
+	uint16_t const id = ip->id;
+
+#define FMT_FLG "  %" PRIu8
+	uint8_t const flg =
+		(uint8_t)((ip->frag_off & ~(uint16_t)IP_OFFMASK) >> 13);
+
+#define FMT_OFF "%04" PRIx16
+	uint16_t const off = ip->frag_off & (uint16_t)IP_OFFMASK;
+
+#define FMT_TTL " %02" PRIx8
+	uint8_t const ttl = ip->ttl;
+
+#define FMT_PRO " %02" PRIx8
+	uint8_t const pro = ip->protocol;
+
+#define FMT_CKS "%04" PRIx16
+	uint8_t const cks = ip->check;
+
+#define FMT_SRC "%s"
+	char src[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &ip->saddr, src, sizeof(src));
+
+#define FMT_DST " %s"
+	char dst[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &ip->daddr, dst, sizeof(src));
+
+	printf("IP Hdr Dump:\n");
+
+	uint8_t const *raw_ip = (uint8_t *)ip;
+
+	// TODO data between ip and icmp is missing
+	for (size_t i = 0; i < sizeof(*ip); i += 1) {
+		if ((i % 2) == 0) {
+			printf(" ");
+		}
+
+		printf("%02" PRIx8, raw_ip[i]);
+	}
+
+	printf(" \n");
+
+	printf("Vr HL TOS  Len   ID Flg  off TTL Pro  cks      Src\tDst\tData\n");
+
+	printf(FMT_VR " " FMT_HL " " FMT_TOS " " FMT_LEN " " FMT_ID " " FMT_FLG
+		      " " FMT_OFF " " FMT_TTL " " FMT_PRO " " FMT_CKS
+		      " " FMT_SRC " " FMT_DST " "
+		      "\n",
+	       vr, hl, tos, len, id, flg, off, ttl, pro, cks, src, dst);
+
+	// TODO dump data
+
+#undef FMT_VR
+#undef FMT_HL
+#undef FMT_TOS
+#undef FMT_LEN
+#undef FMT_ID
+#undef FMT_FLG
+#undef FMT_OFF
+#undef FMT_TTL
+#undef FMT_PRO
+#undef FMT_CKS
+#undef FMT_SRC
+#undef FMT_DST
+}
+
+static void dump_icmp(struct icmphdr const *icmp, uint16_t data_size)
+{
+#define FMT_TYPE "%" PRIu8
+	uint8_t const type = icmp->type;
+#define FMT_CODE "%" PRIu8
+	uint8_t const code = icmp->code;
+#define FMT_SIZE "%" PRIu16
+	uint16_t const size = sizeof(*icmp) + data_size;
+#define FMT_ID "%#06" PRIx16
+	uint16_t const id = icmp->un.echo.id;
+#define FMT_SEQ "%#06" PRIx16
+	uint16_t const seq = icmp->un.echo.sequence;
+
+	printf("ICMP: type " FMT_TYPE ", code " FMT_CODE ", size " FMT_SIZE
+	       ", id " FMT_ID ", seq " FMT_SEQ "\n",
+	       type, code, size, id, seq);
+
+#undef FMT_TYPE
+#undef FMT_CODE
+#undef FMT_SIZE
+#undef FMT_ID
+#undef FMT_SEQ
+}
+
 static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 			     size_t len, struct sockaddr_in const *addr)
 {
@@ -370,9 +478,13 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 			return EXIT_SUCCESS;
 		}
 
-		printf("%zu bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms\n",
-		       len - sizeof(*ip), addr_s, icmp->un.echo.sequence,
-		       ip->ttl, 0.0);
+		ctx->stats.recv_count += 1;
+
+		if (!ctx->opts->quiet) {
+			printf("%zu bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms\n",
+			       len - sizeof(*ip), addr_s,
+			       icmp->un.echo.sequence, ip->ttl, 0.0);
+		}
 
 		break;
 	}
@@ -399,6 +511,12 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 
 		printf("%zu bytes from %s: %s\n", len - sizeof(*ip), addr_s,
 		       message);
+
+		if (ctx->opts->verbose) {
+			dump_ip(orig_ip);
+			dump_icmp(orig_icmp, 0); // TODO
+		}
+
 		break;
 	}
 	}
