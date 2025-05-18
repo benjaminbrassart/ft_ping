@@ -6,13 +6,13 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 12:08:57 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/18 12:14:43 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "options.h"
 #include "args.h"
-#include "message.h"
+#include "display.h"
 
 #include <ctype.h>
 #include <inttypes.h>

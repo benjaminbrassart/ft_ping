@@ -6,12 +6,12 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 12:13:29 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/18 12:14:46 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "display.h"
 #include "icmp.h"
-#include "message.h"
 #include "options.h"
 
 #include <signal.h>
