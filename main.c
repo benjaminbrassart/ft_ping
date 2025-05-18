@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/14 13:35:57 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 12:23:00 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/18 12:24:35 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@ int main(int argc, char const *argv[])
 	}
 
 	struct ping_context ctx;
+	unsigned running = 1;
 
 	for (size_t i = 0; i < opts.hostname_count; i += 1) {
 		res = context_create(&ctx, &opts, opts.hostnames[i]);
@@ -44,7 +45,10 @@ int main(int argc, char const *argv[])
 			break;
 		}
 
+		ctx.running = running;
 		res = context_execute(&ctx);
+		running = ctx.running;
+
 		context_free(&ctx);
 		if (res != EXIT_SUCCESS) {
 			break;
