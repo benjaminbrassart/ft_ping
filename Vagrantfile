@@ -13,6 +13,6 @@ Vagrant.configure("2") do |config|
     export DEBIAN_FRONTEND=noninteractive
 
     apt-get update -y
-    apt-get install -y inetutils-ping build-essential libbsd-dev valgrind strace # TODO remove libbsd
+    apt-get install -y inetutils-ping build-essential valgrind strace
   SHELL
 end

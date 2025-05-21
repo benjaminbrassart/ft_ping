@@ -6,13 +6,14 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 15:22:05 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/21 16:46:50 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "options.h"
 #include "args.h"
 #include "display.h"
+#include "ft.h"
 
 #include <ctype.h>
 #include <inttypes.h>
@@ -549,31 +550,31 @@ void opts_print_help(void)
 			name_short_buf[3] = '\0';
 		}
 
-		strlcat(buffer, "  ", sizeof(buffer));
-		strlcat(buffer, name_short_buf, sizeof(buffer));
-		strlcat(buffer, " ", sizeof(buffer));
+		ft_strlcat(buffer, "  ", sizeof(buffer));
+		ft_strlcat(buffer, name_short_buf, sizeof(buffer));
+		ft_strlcat(buffer, " ", sizeof(buffer));
 
 		size_t option_len = 0;
 
 		if (option->name_long != NULL) {
-			strlcat(buffer, "--", sizeof(buffer));
-			strlcat(buffer, option->name_long, sizeof(buffer));
+			ft_strlcat(buffer, "--", sizeof(buffer));
+			ft_strlcat(buffer, option->name_long, sizeof(buffer));
 
 			option_len = strlen(option->name_long);
 
 			if (option->param_name != NULL) {
 				// append "=<param_name>"
-				strlcat(buffer, "=", sizeof(buffer));
-				strlcat(buffer, option->param_name,
-					sizeof(buffer));
+				ft_strlcat(buffer, "=", sizeof(buffer));
+				ft_strlcat(buffer, option->param_name,
+					   sizeof(buffer));
 				option_len += strlen(option->param_name) + 1;
 			}
 		}
 
 		for (size_t i = option_len; i < left_column_length; i += 1) {
-			strlcat(buffer, " ", sizeof(buffer));
+			ft_strlcat(buffer, " ", sizeof(buffer));
 		}
-		strlcat(buffer, option->description, sizeof(buffer));
+		ft_strlcat(buffer, option->description, sizeof(buffer));
 		puts(buffer);
 	}
 }
