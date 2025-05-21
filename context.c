@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 15:56:47 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/21 16:35:05 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -277,8 +277,15 @@ void context_free(struct ping_context *ctx)
 
 static void print_init_message(struct ping_context *ctx)
 {
-	printf("PING %s (%s): %zu data bytes\n", ctx->hostname, ctx->addr_s,
+	printf("PING %s (%s): %zu data bytes", ctx->hostname, ctx->addr_s,
 	       ctx->opts->size);
+
+	if (ctx->opts->verbose) {
+		printf(", id 0x%1$04" PRIx16 " = %1$" PRIu16,
+		       (uint16_t)ctx->pid);
+	}
+
+	printf("\n");
 }
 
 static void print_summary(struct ping_context *ctx)
