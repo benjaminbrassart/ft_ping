@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 16:35:05 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/21 16:55:29 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -291,26 +291,30 @@ static void print_init_message(struct ping_context *ctx)
 static void print_summary(struct ping_context *ctx)
 {
 	struct ping_stats const *stats = &ctx->stats;
-	unsigned int packet_loss = 0;
+	unsigned int packet_loss = 100;
 	double time_avg = 0;
 	double time_stddev = 0;
 
 	if (stats->recv_count > 0) {
+		size_t lost_packets = stats->send_count - stats->recv_count;
+
 		time_avg = stats->time_sum / (double)stats->recv_count;
+		packet_loss = 100 * lost_packets / stats->send_count;
 	}
+
+	printf("--- %s ping statistics ---\n", ctx->hostname);
+	printf("%zu packets transmitted, %zu packets received, %u%% packet loss\n",
+	       stats->send_count, stats->recv_count, packet_loss);
 
 	if (stats->recv_count > 1) {
 		double time_variance =
 			(stats->time_sum_squared / (double)stats->recv_count) -
 			(time_avg * time_avg);
 		time_stddev = sqrt(time_variance);
-	}
 
-	printf("--- %s ping statistics ---\n", ctx->hostname);
-	printf("%zu packets transmitted, %zu packets received, %u%% packet loss\n",
-	       stats->send_count, stats->recv_count, packet_loss);
-	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f\n",
-	       stats->time_min, time_avg, stats->time_max, time_stddev);
+		printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f\n",
+		       stats->time_min, time_avg, stats->time_max, time_stddev);
+	}
 }
 
 static uint8_t *recvfrom_peeked(int fd, size_t *len, struct sockaddr *addr,
