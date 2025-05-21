@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:11:15 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 12:13:05 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/21 15:38:22 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,11 +48,11 @@ uint16_t compute_icmp_checksum(struct msghdr const *msg)
 	return htons((uint16_t)~sum);
 }
 
-char const *icmp_code_tostring(uint8_t code, uint8_t type)
+char const *icmp_code_tostring(uint8_t type, uint8_t code)
 {
-	switch (code) {
+	switch (type) {
 	case ICMP_DEST_UNREACH:
-		switch (type) {
+		switch (code) {
 		case ICMP_NET_UNREACH:
 			return "Network unreachable";
 		case ICMP_HOST_UNREACH:

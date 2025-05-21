@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 13:09:30 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/21 15:40:34 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -438,9 +438,9 @@ static void dump_icmp(struct icmphdr const *icmp, uint16_t data_size)
 	uint8_t const code = icmp->code;
 #define FMT_SIZE "%" PRIu16
 	uint16_t const size = sizeof(*icmp) + data_size;
-#define FMT_ID "%#06" PRIx16
+#define FMT_ID "0x%04" PRIx16
 	uint16_t const id = icmp->un.echo.id;
-#define FMT_SEQ "%#06" PRIx16
+#define FMT_SEQ "0x%04" PRIx16
 	uint16_t const seq = icmp->un.echo.sequence;
 
 	printf("ICMP: type " FMT_TYPE ", code " FMT_CODE ", size " FMT_SIZE
@@ -503,7 +503,7 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 		}
 
 		char const *message =
-			icmp_code_tostring(icmp->code, icmp->type);
+			icmp_code_tostring(icmp->type, icmp->code);
 
 		if (message == NULL) {
 			return EXIT_SUCCESS;
