@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 12:20:05 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/21 15:22:05 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,7 @@ struct opt_parser {
 	unsigned accept_opt : 1;
 };
 
-typedef int(option_handler_func_t)(struct opt_parser *, char const[]);
+typedef int(option_handler_func_t)(struct options *, char const[]);
 
 struct option_table {
 	char const *name_long;
@@ -41,7 +41,7 @@ struct option_table {
 	char const *description;
 };
 
-static int opt_ttl(struct opt_parser *parser, char const *value)
+static int opt_ttl(struct options *opts, char const *value)
 {
 	char *end;
 	uintmax_t ttl;
@@ -62,11 +62,11 @@ static int opt_ttl(struct opt_parser *parser, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	parser->opts.ttl = (uint8_t)ttl;
+	opts->ttl = (uint8_t)ttl;
 	return EXIT_SUCCESS;
 }
 
-static int opt_count(struct opt_parser *parser, char const *value)
+static int opt_count(struct options *opts, char const *value)
 {
 	uintmax_t count;
 	char *end;
@@ -82,18 +82,18 @@ static int opt_count(struct opt_parser *parser, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	parser->opts.count = (size_t)count;
+	opts->count = (size_t)count;
 	return EXIT_SUCCESS;
 }
 
-static int opt_debug(struct opt_parser *parser, char const *value)
+static int opt_debug(struct options *opts, char const *value)
 {
 	(void)value;
-	parser->opts.debug = 1;
+	opts->debug = 1;
 	return EXIT_SUCCESS;
 }
 
-static int opt_interval(struct opt_parser *parser, char const *value)
+static int opt_interval(struct options *opts, char const *value)
 {
 	long double interval;
 	char *end;
@@ -109,12 +109,12 @@ static int opt_interval(struct opt_parser *parser, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	parser->opts.interval.tv_nsec = (long)(fmod(interval, 1.0) * 1e9);
-	parser->opts.interval.tv_sec = (time_t)(interval - fmod(interval, 1.0));
+	opts->interval.tv_nsec = (long)(fmod(interval, 1.0) * 1e9);
+	opts->interval.tv_sec = (time_t)(interval - fmod(interval, 1.0));
 	return EXIT_SUCCESS;
 }
 
-static int opt_pattern(struct opt_parser *parser, char const *value)
+static int opt_pattern(struct options *opts, char const *value)
 {
 	for (size_t i = 0; value[i] != '\0'; i += 1) {
 		if (!isxdigit(value[i])) {
@@ -123,25 +123,25 @@ static int opt_pattern(struct opt_parser *parser, char const *value)
 		}
 	}
 
-	parser->opts.pattern = value;
+	opts->pattern = value;
 	return EXIT_SUCCESS;
 }
 
-static int opt_quiet(struct opt_parser *parser, char const *value)
+static int opt_quiet(struct options *opts, char const *value)
 {
 	(void)value;
-	parser->opts.quiet = 1;
+	opts->quiet = 1;
 	return EXIT_SUCCESS;
 }
 
-static int opt_routing_ignore(struct opt_parser *parser, char const *value)
+static int opt_routing_ignore(struct options *opts, char const *value)
 {
 	(void)value;
-	parser->opts.routing_ignore = 1;
+	opts->routing_ignore = 1;
 	return EXIT_SUCCESS;
 }
 
-static int opt_size(struct opt_parser *parser, char const *value)
+static int opt_size(struct options *opts, char const *value)
 {
 	uintmax_t size;
 	char *end;
@@ -157,18 +157,18 @@ static int opt_size(struct opt_parser *parser, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	parser->opts.size = (size_t)size;
+	opts->size = (size_t)size;
 	return EXIT_SUCCESS;
 }
 
-static int opt_verbose(struct opt_parser *parser, char const *value)
+static int opt_verbose(struct options *opts, char const *value)
 {
 	(void)value;
-	parser->opts.verbose = 1;
+	opts->verbose = 1;
 	return EXIT_SUCCESS;
 }
 
-static int opt_linger(struct opt_parser *parser, char const *value)
+static int opt_linger(struct options *opts, char const *value)
 {
 	long double linger;
 	char *end;
@@ -184,15 +184,15 @@ static int opt_linger(struct opt_parser *parser, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	parser->opts.linger.tv_nsec = (long)(fmod(linger, 1.0) * 1e9);
-	parser->opts.linger.tv_sec = (time_t)(linger - fmod(linger, 1.0));
+	opts->linger.tv_nsec = (long)(fmod(linger, 1.0) * 1e9);
+	opts->linger.tv_sec = (time_t)(linger - fmod(linger, 1.0));
 	return EXIT_SUCCESS;
 }
 
-static int opt_help(struct opt_parser *parser, char const *value)
+static int opt_help(struct options *opts, char const *value)
 {
 	(void)value;
-	parser->opts.help = 1;
+	opts->help = 1;
 	return -1;
 }
 
@@ -327,10 +327,9 @@ static char const *opt_get_value(struct opt_parser *parser, char const s[],
 	}
 
 	if (consume_next) {
-		char const *next = argit_peek(&parser->it);
-
 		argit_shift(&parser->it);
-		return next;
+
+		return argit_peek(&parser->it);
 	}
 
 	return NULL;
@@ -398,6 +397,8 @@ static int opts_parse_next(struct opt_parser *parser)
 		char const *value =
 			opt_get_value(parser, arg, entry->value_required);
 
+		DBG("option value = %s", value);
+
 		if (entry->value_required && value == NULL) {
 			ERR("option '--%s' requires an argument",
 			    entry->name_long);
@@ -410,7 +411,9 @@ static int opts_parse_next(struct opt_parser *parser)
 			return EXIT_FAILURE;
 		}
 
-		return entry->handler(parser, value);
+		argit_shift(&parser->it);
+
+		return entry->handler(&parser->opts, value);
 	}
 
 	// short option(s)
@@ -442,7 +445,7 @@ static int opts_parse_next(struct opt_parser *parser)
 			}
 		}
 
-		int handler_res = entry->handler(parser, value);
+		int handler_res = entry->handler(&parser->opts, value);
 
 		if (handler_res != EXIT_SUCCESS || value_same_arg) {
 			return handler_res;
