@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 15:40:34 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/21 15:46:44 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,7 @@
 #include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/timerfd.h>
+#include <time.h>
 #include <unistd.h>
 
 static uint8_t hex_to_nibble(char c)
@@ -207,12 +208,18 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 			  INET_ADDRSTRLEN);
 
 		ctx->stats = (struct ping_stats){
-			.recv_count = 0,
 			.send_count = 0,
-			.time_max = 0.0,
-			.time_min = 0.0,
-			.time_sum = 0.0,
-			.time_sum_squared = 0.0,
+			.recv_count = 0,
+			.dup_count = 0,
+			.time_min = 0,
+			.time_max = 0,
+			.time_sum = 0,
+			.time_sum_squared = 0,
+		};
+		ctx->packets = (struct packet_list){
+			.begin = NULL,
+			.end = NULL,
+			.size = 0,
 		};
 		ctx->opts = opts;
 		ctx->hostname = hostname;
@@ -256,6 +263,15 @@ void context_free(struct ping_context *ctx)
 	close(ctx->timer_fd);
 	close(ctx->epoll_fd);
 	free(ctx->payload);
+
+	struct packet_list_node *it = ctx->packets.begin;
+
+	while (it != NULL) {
+		struct packet_list_node *next = it->next;
+
+		free(it);
+		it = next;
+	}
 }
 
 static void print_init_message(struct ping_context *ctx)
@@ -266,16 +282,16 @@ static void print_init_message(struct ping_context *ctx)
 
 static void print_summary(struct ping_context *ctx)
 {
-	struct ping_stats const *stats = &ctx->stats;
-	unsigned int packet_loss = 0;
-	double time_avg = stats->time_sum / (double)stats->recv_count;
-	double time_stddev = 0;
+	// struct ping_stats const *stats = &ctx->stats;
+	// unsigned int packet_loss = 0;
+	// double time_avg = stats->time_sum / (double)stats->recv_count;
+	// double time_stddev = 0;
 
-	printf("--- %s ping statistics ---\n", ctx->hostname);
-	printf("%zu packets transmitted, %zu packets received, %u%% packet loss\n",
-	       stats->send_count, stats->recv_count, packet_loss);
-	printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f\n",
-	       stats->time_min, time_avg, stats->time_max, time_stddev);
+	// printf("--- %s ping statistics ---\n", ctx->hostname);
+	// printf("%zu packets transmitted, %zu packets received, %u%% packet loss\n",
+	//        stats->send_count, stats->recv_count, packet_loss);
+	// printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f\n",
+	//        stats->time_min, time_avg, stats->time_max, time_stddev);
 }
 
 static uint8_t *recvfrom_peeked(int fd, size_t *len, struct sockaddr *addr,
@@ -315,6 +331,13 @@ static uint8_t *recvfrom_peeked(int fd, size_t *len, struct sockaddr *addr,
 
 static int send_ping(struct ping_context *ctx)
 {
+	struct packet_list_node *node;
+
+	node = malloc(sizeof(*node));
+	if (node == NULL) {
+		return EXIT_FAILURE;
+	}
+
 	struct icmphdr icmp = {
 		.type = ICMP_ECHO,
 		.code = 0,
@@ -343,10 +366,31 @@ static int send_ping(struct ping_context *ctx)
 
 	sc = sendmsg(ctx->sock_fd, &msg, 0);
 	if (sc == -1) {
+		free(node);
 		return EXIT_FAILURE;
 	}
 
+	struct packet_list *packets = &ctx->packets;
+
+	if (packets->size == 0) {
+		packets->begin = node;
+	} else {
+		packets->end->next = node;
+	}
+
+	node->received = 0;
+	node->seq = ctx->seq;
+	node->received_at.tv_sec = 0;
+	node->received_at.tv_nsec = 0;
+	clock_gettime(CLOCK_MONOTONIC, &node->sent_at);
+
+	node->next = NULL;
+	node->prev = packets->end;
+	packets->end = node;
+	packets->size += 1;
+
 	ctx->seq += 1;
+	ctx->stats.send_count += 1;
 	return EXIT_SUCCESS;
 }
 
@@ -454,6 +498,15 @@ static void dump_icmp(struct icmphdr const *icmp, uint16_t data_size)
 #undef FMT_SEQ
 }
 
+static double timespec_diff(struct timespec const *t1,
+			    struct timespec const *t2)
+{
+	double n1 = (t1->tv_sec * 1e3) + (t1->tv_nsec / 1e6);
+	double n2 = (t2->tv_sec * 1e3) + (t2->tv_nsec / 1e6);
+
+	return n1 > n2 ? n1 - n2 : n2 - n1;
+}
+
 static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 			     size_t len, struct sockaddr_in const *addr)
 {
@@ -478,14 +531,56 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 			return EXIT_SUCCESS;
 		}
 
-		ctx->stats.recv_count += 1;
+		struct packet_list_node *node = ctx->packets.end;
 
-		if (!ctx->opts->quiet) {
-			printf("%zu bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms\n",
-			       len - sizeof(*ip), addr_s,
-			       icmp->un.echo.sequence, ip->ttl, 0.0);
+		while (node != NULL) {
+			if (icmp->un.echo.sequence == node->seq) {
+				break;
+			}
+
+			node = node->prev;
 		}
 
+		if (node == NULL) {
+			break;
+		}
+
+		clock_gettime(CLOCK_MONOTONIC, &node->received_at);
+
+		double time_diff =
+			timespec_diff(&node->sent_at, &node->received_at);
+
+		if (!ctx->opts->quiet) {
+			printf("%zu bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms",
+			       len - sizeof(*ip), addr_s,
+			       icmp->un.echo.sequence, ip->ttl, time_diff);
+
+			if (node->received) {
+				printf(" (DUP!)");
+			}
+
+			printf("\n");
+		}
+
+		if (node->received) {
+			ctx->stats.dup_count += 1;
+		} else {
+			if (ctx->stats.recv_count == 0 ||
+			    time_diff < ctx->stats.time_min) {
+				ctx->stats.time_min = time_diff;
+			}
+
+			if (ctx->stats.recv_count == 0 ||
+			    time_diff > ctx->stats.time_max) {
+				ctx->stats.time_max = time_diff;
+			}
+
+			ctx->stats.recv_count += 1;
+			ctx->stats.time_sum += time_diff;
+			ctx->stats.time_sum_squared += (time_diff * time_diff);
+		}
+
+		node->received = 1;
 		break;
 	}
 
@@ -493,10 +588,6 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 		struct iphdr const *orig_ip = (struct iphdr *)payload;
 		struct icmphdr const *orig_icmp =
 			(struct icmphdr *)(payload + sizeof(*orig_ip));
-
-		if (orig_icmp->code != ICMP_ECHO) {
-			return EXIT_SUCCESS;
-		}
 
 		if (orig_icmp->un.echo.id != (uint16_t)ctx->pid) {
 			return EXIT_SUCCESS;
