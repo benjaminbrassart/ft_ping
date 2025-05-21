@@ -6,7 +6,7 @@
 #    By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/05/14 13:29:12 by bbrassar          #+#    #+#              #
-#    Updated: 2025/05/18 12:22:21 by bbrassar         ###   ########.fr        #
+#    Updated: 2025/05/21 15:06:20 by bbrassar         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -21,7 +21,7 @@ override DEP := $(OBJ:.o=.d)
 override CFLAGS += -Wall -Wextra -c
 override CPPFLAGS += -MMD -MP
 override LDFLAGS ?=
-override LDLIBS ?= -lm
+override LDLIBS += -lm -lbsd # TODO remove libbsd
 
 $(NAME): $(OBJ)
 	$(CC) $^ $(LDFLAGS) $(LDLIBS) -o $@
