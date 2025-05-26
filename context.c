@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 14:54:54 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 15:03:43 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -275,6 +275,7 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 		ctx->opts = opts;
 		ctx->hostname = hostname;
 		ctx->running = 1;
+		ctx->finished = 0;
 		ctx->epoll_fd = epoll_fd;
 		ctx->sock_fd = sock_fd;
 		ctx->timer_fd = timer_fd;
@@ -697,10 +698,8 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 
 	if (opts->count.present) {
 		ctx->total_recv_count += 1;
-		if (ctx->total_recv_count >= opts->count.value) {
-			ctx->running = 0;
-		}
 	}
+
 	return EXIT_SUCCESS;
 }
 
@@ -799,14 +798,17 @@ static int context_handle_event(struct ping_context *ctx,
 
 int context_execute(struct ping_context *ctx)
 {
+	struct options const *opts = ctx->opts;
 	int epr;
 	struct epoll_event ev[4];
 	int ec = sizeof(ev) / sizeof(ev[0]);
 	int res = EXIT_SUCCESS;
 
+	ctx->finished = 0;
+	ctx->total_recv_count = 0;
 	print_init_message(ctx);
 
-	while (ctx->running) {
+	while (ctx->running && !ctx->finished) {
 		epr = epoll_wait(ctx->epoll_fd, ev, ec, -1);
 		if (epr == -1) {
 			ERR("failed to poll: %m");
@@ -814,13 +816,19 @@ int context_execute(struct ping_context *ctx)
 		}
 
 		for (int i = 0; i < epr; i += 1) {
-			if (!ctx->running) {
+			if (!ctx->running || ctx->finished) {
 				break;
 			}
 
 			res = context_handle_event(ctx, &ev[i]);
 			if (res != EXIT_SUCCESS) {
 				return res;
+			}
+
+			if (opts->count.present &&
+			    ctx->total_recv_count >= opts->count.value) {
+				ctx->finished = 1;
+				break;
 			}
 		}
 	}

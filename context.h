@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:22 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 13:32:56 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 15:00:58 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,6 +53,7 @@ struct ping_context {
 	char const *hostname;
 	struct packet_list packets;
 	unsigned running : 1;
+	unsigned finished : 1;
 	int sock_fd;
 	int epoll_fd;
 	int timer_fd;
