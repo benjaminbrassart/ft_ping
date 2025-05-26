@@ -6,14 +6,14 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 16:45:05 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 17:19:13 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "options.h"
 #include "args.h"
 #include "display.h"
-#include "ft.h"
+#include "libft/ft.h"
 
 #include <ctype.h>
 #include <inttypes.h>
