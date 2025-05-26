@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 16:45:11 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 17:12:55 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -581,10 +581,10 @@ static void dump_ip(struct iphdr const *ip)
 
 	printf("IP Hdr Dump:\n");
 
+	size_t ip_size = ip->ihl * 4;
 	uint8_t const *raw_ip = (uint8_t *)ip;
 
-	// TODO data between ip and icmp is missing
-	for (size_t i = 0; i < sizeof(*ip); i += 1) {
+	for (size_t i = 0; i < ip_size; i += 1) {
 		if ((i % 2) == 0) {
 			printf(" ");
 		}
@@ -598,11 +598,14 @@ static void dump_ip(struct iphdr const *ip)
 
 	printf(FMT_VR " " FMT_HL " " FMT_TOS " " FMT_LEN " " FMT_ID " " FMT_FLG
 		      " " FMT_OFF " " FMT_TTL " " FMT_PRO " " FMT_CKS
-		      " " FMT_SRC " " FMT_DST " "
-		      "\n",
+		      " " FMT_SRC " " FMT_DST " ",
 	       vr, hl, tos, len, id, flg, off, ttl, pro, cks, src, dst);
 
-	// TODO dump data
+	for (size_t i = sizeof(*ip); i < ip_size; i += 1) {
+		printf("%02" PRIx8, raw_ip[i]);
+	}
+
+	printf("\n");
 
 #undef FMT_VR
 #undef FMT_HL
@@ -665,8 +668,17 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 	inet_ntop(AF_INET, &addr->sin_addr, addr_s, sizeof(addr_s));
 
 	struct iphdr const *ip = (struct iphdr *)raw;
-	struct icmphdr const *icmp = (struct icmphdr *)(raw + sizeof(*ip));
-	uint8_t const *payload = (raw + sizeof(*ip) + sizeof(*icmp));
+
+	size_t ip_size = ip->ihl * 4;
+
+	if (ip_size < 20 || ip_size > len) {
+		// something weird is happening (ip header ill-formed), give up
+		// this packet.
+		return EXIT_SUCCESS;
+	}
+
+	struct icmphdr const *icmp = (struct icmphdr *)(raw + ip_size);
+	uint8_t const *payload = (raw + ip_size + sizeof(*icmp));
 
 	switch (icmp->type) {
 	case ICMP_ECHO:
@@ -738,9 +750,19 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 	}
 
 	default: {
+		size_t payload_len = len - (payload - raw);
+
 		struct iphdr const *orig_ip = (struct iphdr *)payload;
+
+		size_t orig_ip_size = ip->ihl * 4;
+
+		if (orig_ip_size < 20 || orig_ip_size > payload_len) {
+			// same check as above, but for original message
+			return EXIT_SUCCESS;
+		}
+
 		struct icmphdr const *orig_icmp =
-			(struct icmphdr *)(payload + sizeof(*orig_ip));
+			(struct icmphdr *)(payload + orig_ip_size);
 
 		if (orig_icmp->un.echo.id != (uint16_t)ctx->pid) {
 			return EXIT_SUCCESS;
@@ -753,7 +775,7 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 			message = "Unknown ICMP message";
 		}
 
-		printf("%zu bytes from %s: %s\n", len - sizeof(*ip), addr_s,
+		printf("%zu bytes from %s: %s\n", len - orig_ip_size, addr_s,
 		       message);
 
 		if (ctx->opts->verbose) {
