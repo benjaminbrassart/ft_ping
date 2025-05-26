@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:00:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 17:05:58 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 13:44:00 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,18 +16,26 @@
 #include <stdint.h>
 #include <time.h>
 
+#define OPTIONAL(Ty)                  \
+	struct {                      \
+		unsigned present : 1; \
+		Ty value;             \
+	}
+
+#define DEFAULT_PAYLOAD_SIZE 56
+
 struct options {
-	uint8_t ttl;
-	size_t count;
+	OPTIONAL(uint8_t) ttl;
+	OPTIONAL(size_t) count;
 	unsigned debug : 1;
 	unsigned help : 1;
-	struct timespec interval;
-	struct timespec timeout;
-	struct timespec linger;
+	OPTIONAL(struct timespec) interval;
+	OPTIONAL(struct timespec) timeout;
+	OPTIONAL(struct timespec) linger;
 	char const *pattern;
 	unsigned quiet : 1;
 	unsigned routing_ignore : 1;
-	size_t size;
+	OPTIONAL(size_t) size;
 	unsigned verbose : 1;
 	char const **hostnames;
 	size_t hostname_count;

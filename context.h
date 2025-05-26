@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:22 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 17:02:23 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 13:32:56 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,6 +63,7 @@ struct ping_context {
 	pid_t pid;
 	uint16_t seq;
 	size_t payload_size;
+	size_t total_recv_count;
 	uint8_t *payload;
 };
 

@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 17:15:49 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 14:54:54 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -108,17 +108,25 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 	sigaddset(&handled_signals, SIGINT);
 
 	do {
-		payload = calloc(opts->size, 1);
+		size_t payload_size;
+
+		if (opts->size.present) {
+			payload_size = opts->size.value;
+		} else {
+			payload_size = DEFAULT_PAYLOAD_SIZE;
+		}
+
+		payload = calloc(payload_size, 1);
 		if (payload == NULL) {
 			break;
 		}
 
 		if (opts->pattern == NULL) {
-			for (size_t i = 0; i < opts->size; i += 1) {
+			for (size_t i = 0; i < payload_size; i += 1) {
 				payload[i] = (uint8_t)i;
 			}
 		} else {
-			fill_payload(payload, opts->size, opts->pattern);
+			fill_payload(payload, payload_size, opts->pattern);
 		}
 
 		epoll_fd = epoll_create1(EPOLL_CLOEXEC);
@@ -133,9 +141,10 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 			break;
 		}
 
-		if (opts->ttl != 0) {
-			if (setsockopt(sock_fd, IPPROTO_IP, IP_TTL, &opts->ttl,
-				       sizeof(opts->ttl)) == -1) {
+		if (opts->ttl.present) {
+			if (setsockopt(sock_fd, IPPROTO_IP, IP_TTL,
+				       &opts->ttl.value,
+				       sizeof(opts->ttl.value)) == -1) {
 				ERR("failed to set TTL: %m");
 				break;
 			}
@@ -158,8 +167,17 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 			break;
 		}
 
+		struct timespec timer_interval = {
+			.tv_sec = 1,
+			.tv_nsec = 0,
+		};
+
+		if (opts->interval.present) {
+			timer_interval = opts->interval.value;
+		}
+
 		struct itimerspec timer_spec = {
-			.it_interval = opts->interval,
+			.it_interval = timer_interval,
 			.it_value = { .tv_sec = 0, .tv_nsec = 1 },
 		};
 
@@ -179,7 +197,7 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 			break;
 		}
 
-		if (opts->timeout.tv_sec > 0 || opts->timeout.tv_nsec > 0) {
+		if (opts->timeout.present) {
 			timeout_fd =
 				timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
 			if (timeout_fd == -1) {
@@ -189,7 +207,7 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 
 			struct itimerspec timeout_spec = {
 				.it_interval = { .tv_sec = 0, .tv_nsec = 1 },
-				.it_value = opts->timeout,
+				.it_value = opts->timeout.value,
 			};
 
 			if (timerfd_settime(timeout_fd, 0, &timeout_spec,
@@ -263,9 +281,10 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 		ctx->signal_fd = signal_fd;
 		ctx->timeout_fd = timeout_fd;
 		ctx->payload = payload;
-		ctx->payload_size = opts->size;
+		ctx->payload_size = opts->size.present ? opts->size.value : 56;
 		ctx->pid = getpid();
 		ctx->seq = 0;
+		ctx->total_recv_count = 0;
 		return EXIT_SUCCESS;
 	} while (0);
 
@@ -316,7 +335,7 @@ void context_free(struct ping_context *ctx)
 static void print_init_message(struct ping_context *ctx)
 {
 	printf("PING %s (%s): %zu data bytes", ctx->hostname, ctx->addr_s,
-	       ctx->opts->size);
+	       ctx->payload_size);
 
 	if (ctx->opts->verbose) {
 		printf(", id 0x%1$04" PRIx16 " = %1$" PRIu16,
@@ -571,6 +590,7 @@ static double timespec_diff(struct timespec const *t1,
 static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 			     size_t len, struct sockaddr_in const *addr)
 {
+	struct options const *opts = ctx->opts;
 	char addr_s[INET6_ADDRSTRLEN];
 
 	inet_ntop(AF_INET, &addr->sin_addr, addr_s, sizeof(addr_s));
@@ -654,10 +674,12 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 			return EXIT_SUCCESS;
 		}
 
+		DBG("message for me! type %d code %d", icmp->type, icmp->code);
+
 		char const *message =
 			icmp_code_tostring(icmp->type, icmp->code);
 
-		if (message != NULL) {
+		if (message == NULL) {
 			message = "Unknown ICMP message";
 		}
 
@@ -673,6 +695,12 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 	}
 	}
 
+	if (opts->count.present) {
+		ctx->total_recv_count += 1;
+		if (ctx->total_recv_count >= opts->count.value) {
+			ctx->running = 0;
+		}
+	}
 	return EXIT_SUCCESS;
 }
 
@@ -772,7 +800,7 @@ static int context_handle_event(struct ping_context *ctx,
 int context_execute(struct ping_context *ctx)
 {
 	int epr;
-	struct epoll_event ev[3];
+	struct epoll_event ev[4];
 	int ec = sizeof(ev) / sizeof(ev[0]);
 	int res = EXIT_SUCCESS;
 

@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 13:24:30 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 13:46:33 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,7 +63,8 @@ static int opt_ttl(struct options *opts, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	opts->ttl = (uint8_t)ttl;
+	opts->ttl.present = 1;
+	opts->ttl.value = (uint8_t)ttl;
 	return EXIT_SUCCESS;
 }
 
@@ -83,7 +84,8 @@ static int opt_count(struct options *opts, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	opts->count = (size_t)count;
+	opts->count.present = 1;
+	opts->count.value = (size_t)count;
 	return EXIT_SUCCESS;
 }
 
@@ -110,8 +112,9 @@ static int opt_interval(struct options *opts, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	opts->interval.tv_nsec = (long)(fmod(interval, 1.0) * 1e9);
-	opts->interval.tv_sec = (time_t)(interval - fmod(interval, 1.0));
+	opts->interval.present = 1;
+	opts->interval.value.tv_nsec = (long)(fmod(interval, 1.0) * 1e9);
+	opts->interval.value.tv_sec = (time_t)(interval - fmod(interval, 1.0));
 	return EXIT_SUCCESS;
 }
 
@@ -158,7 +161,8 @@ static int opt_size(struct options *opts, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	opts->size = (size_t)size;
+	opts->size.present = 1;
+	opts->size.value = (size_t)size;
 	return EXIT_SUCCESS;
 }
 
@@ -185,8 +189,9 @@ static int opt_linger(struct options *opts, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	opts->linger.tv_nsec = (long)(fmod(linger, 1.0) * 1e9);
-	opts->linger.tv_sec = (time_t)(linger - fmod(linger, 1.0));
+	opts->linger.present = 1;
+	opts->linger.value.tv_nsec = (long)(fmod(linger, 1.0) * 1e9);
+	opts->linger.value.tv_sec = (time_t)(linger - fmod(linger, 1.0));
 	return EXIT_SUCCESS;
 }
 
@@ -206,8 +211,9 @@ static int opt_timeout(struct options *opts, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	opts->timeout.tv_nsec = (long)(fmod(timeout, 1.0) * 1e9);
-	opts->timeout.tv_sec = (time_t)(timeout - fmod(timeout, 1.0));
+	opts->timeout.present = 1;
+	opts->timeout.value.tv_nsec = (long)(fmod(timeout, 1.0) * 1e9);
+	opts->timeout.value.tv_sec = (time_t)(timeout - fmod(timeout, 1.0));
 	return EXIT_SUCCESS;
 }
 
@@ -486,26 +492,17 @@ static int opts_parse_next(struct opt_parser *parser)
 }
 
 static struct options const OPTS_DEFAULT = {
-	.ttl = 0,
-	.count = 0,
+	.ttl = { .present = 0 },
+	.count = { .present = 0 },
 	.debug = 0,
 	.help = 0,
-	.interval = {
-		.tv_sec = 1,
-		.tv_nsec = 0,
-	},
-	.linger = {
-		.tv_sec = 0,
-		.tv_nsec = 0,
-	},
-	.timeout = {
-		.tv_sec = 0,
-		.tv_nsec = 0,
-	},
+	.interval = { .present = 0 },
+	.linger = { .present = 0 },
+	.timeout = { .present = 0 },
 	.pattern = NULL,
 	.quiet = 0,
 	.routing_ignore = 0,
-	.size = 56,
+	.size = {.present = 0,},
 	.verbose = 0,
 	.hostnames = NULL,
 };
