@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:11:15 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 16:29:59 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:35:56 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -107,7 +107,14 @@ char const *icmp_code_tostring(uint8_t type, uint8_t code)
 		}
 
 	case ICMP_TIME_EXCEEDED:
-		return "Time to live exceeded";
+		switch (code) {
+		case ICMP_EXC_TTL:
+			return "Time to live exceeded";
+		case ICMP_EXC_FRAGTIME:
+			return "Frag reassembly time exceeded";
+		default:
+			return NULL;
+		}
 
 	case ICMP_PARAMETERPROB:
 		return "Parameter problem";
