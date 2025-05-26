@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 15:58:42 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:02:05 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include <inttypes.h>
 #include <netinet/in.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tgmath.h>
@@ -419,6 +420,22 @@ static uint8_t *recvfrom_peeked(int fd, size_t *len, struct sockaddr *addr,
 	return NULL;
 }
 
+static struct packet_list_node *find_packet(struct ping_context const *ctx,
+					    uint16_t seq)
+{
+	struct packet_list_node *node = ctx->packets.end;
+
+	while (node != NULL) {
+		if (node->seq == seq) {
+			break;
+		}
+
+		node = node->prev;
+	}
+
+	return node;
+}
+
 static int send_ping(struct ping_context *ctx)
 {
 	struct packet_list_node *node;
@@ -627,15 +644,8 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 			return EXIT_SUCCESS;
 		}
 
-		struct packet_list_node *node = ctx->packets.end;
-
-		while (node != NULL) {
-			if (icmp->un.echo.sequence == node->seq) {
-				break;
-			}
-
-			node = node->prev;
-		}
+		struct packet_list_node *node =
+			find_packet(ctx, icmp->un.echo.sequence);
 
 		if (node == NULL) {
 			break;
