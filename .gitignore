@@ -4,3 +4,5 @@
 /.cache/
 /compile_commands.json
 /.vagrant/
+/.venv/
+/test_output/
