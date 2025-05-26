@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 15:09:20 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 15:45:50 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -772,6 +772,11 @@ static int context_handle_timeout(struct ping_context *ctx)
 {
 	uint64_t buf;
 	ssize_t rr;
+
+	if (ctx->opts->count.present &&
+	    ctx->packets.size >= ctx->opts->count.value) {
+		return EXIT_SUCCESS;
+	}
 
 	rr = read(ctx->timeout_fd, &buf, sizeof(buf));
 	if (rr == -1) {
