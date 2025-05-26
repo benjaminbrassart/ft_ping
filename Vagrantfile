@@ -13,6 +13,6 @@ Vagrant.configure("2") do |config|
     export DEBIAN_FRONTEND=noninteractive
 
     apt-get update -y
-    apt-get install -y inetutils-ping build-essential valgrind strace
+    apt-get install -y inetutils-ping build-essential valgrind strace tcpdump tshark
   SHELL
 end
