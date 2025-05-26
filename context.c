@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 16:08:50 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:23:12 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,6 +71,13 @@ static void fill_payload(uint8_t *payload, size_t len, char const pattern[])
 	}
 }
 
+static void fill_default_payload(uint8_t *payload, size_t len)
+{
+	for (size_t i = 0; i < len; i += 1) {
+		payload[i] = (uint8_t)i;
+	}
+}
+
 static int resolve_hostname(char const hostname[], struct sockaddr_in *addr)
 {
 	struct addrinfo const hint = {
@@ -123,9 +130,7 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 		}
 
 		if (opts->pattern == NULL) {
-			for (size_t i = 0; i < payload_size; i += 1) {
-				payload[i] = (uint8_t)i;
-			}
+			fill_default_payload(payload, payload_size);
 		} else {
 			fill_payload(payload, payload_size, opts->pattern);
 		}
