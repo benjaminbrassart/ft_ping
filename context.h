@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:22 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 15:31:47 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/21 17:02:23 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,6 +57,7 @@ struct ping_context {
 	int epoll_fd;
 	int timer_fd;
 	int signal_fd;
+	int timeout_fd;
 	struct sockaddr_in addr;
 	char addr_s[INET_ADDRSTRLEN];
 	pid_t pid;

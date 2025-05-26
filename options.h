@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:00:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/18 11:14:15 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/21 17:05:58 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@ struct options {
 	unsigned debug : 1;
 	unsigned help : 1;
 	struct timespec interval;
+	struct timespec timeout;
 	struct timespec linger;
 	char const *pattern;
 	unsigned quiet : 1;

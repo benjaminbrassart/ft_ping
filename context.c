@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 16:55:29 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/21 17:15:49 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -99,6 +99,7 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 	int sock_fd = -1;
 	int timer_fd = -1;
 	int signal_fd = -1;
+	int timeout_fd = -1;
 	int res = EXIT_FAILURE;
 
 	sigset_t handled_signals;
@@ -178,6 +179,37 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 			break;
 		}
 
+		if (opts->timeout.tv_sec > 0 || opts->timeout.tv_nsec > 0) {
+			timeout_fd =
+				timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
+			if (timeout_fd == -1) {
+				ERR("failed to create timeout fd: %m");
+				break;
+			}
+
+			struct itimerspec timeout_spec = {
+				.it_interval = { .tv_sec = 0, .tv_nsec = 1 },
+				.it_value = opts->timeout,
+			};
+
+			if (timerfd_settime(timeout_fd, 0, &timeout_spec,
+					    NULL) == -1) {
+				ERR("failed to set timeout interval: %m");
+				break;
+			}
+
+			struct epoll_event timeout_event = {
+				.events = EPOLLIN,
+				.data = { .fd = timeout_fd },
+			};
+
+			if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, timeout_fd,
+				      &timeout_event) == -1) {
+				ERR("failed to poll timeout fd: %m");
+				break;
+			}
+		}
+
 		signal_fd = signalfd(-1, &handled_signals, SFD_CLOEXEC);
 		if (signal_fd == -1) {
 			ERR("failed to create signal fd: %m");
@@ -229,12 +261,17 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 		ctx->sock_fd = sock_fd;
 		ctx->timer_fd = timer_fd;
 		ctx->signal_fd = signal_fd;
+		ctx->timeout_fd = timeout_fd;
 		ctx->payload = payload;
 		ctx->payload_size = opts->size;
 		ctx->pid = getpid();
 		ctx->seq = 0;
 		return EXIT_SUCCESS;
 	} while (0);
+
+	if (timeout_fd != -1) {
+		close(timeout_fd);
+	}
 
 	if (signal_fd != -1) {
 		close(signal_fd);
@@ -260,6 +297,7 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 void context_free(struct ping_context *ctx)
 {
 	close(ctx->sock_fd);
+	close(ctx->timeout_fd);
 	close(ctx->signal_fd);
 	close(ctx->timer_fd);
 	close(ctx->epoll_fd);
@@ -619,8 +657,8 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 		char const *message =
 			icmp_code_tostring(icmp->type, icmp->code);
 
-		if (message == NULL) {
-			return EXIT_SUCCESS;
+		if (message != NULL) {
+			message = "Unknown ICMP message";
 		}
 
 		printf("%zu bytes from %s: %s\n", len - sizeof(*ip), addr_s,
@@ -628,7 +666,7 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 
 		if (ctx->opts->verbose) {
 			dump_ip(orig_ip);
-			dump_icmp(orig_icmp, 0); // TODO
+			dump_icmp(orig_icmp, 0);
 		}
 
 		break;
@@ -694,6 +732,20 @@ static int context_handle_timer(struct ping_context *ctx)
 	return EXIT_SUCCESS;
 }
 
+static int context_handle_timeout(struct ping_context *ctx)
+{
+	uint64_t buf;
+	ssize_t rr;
+
+	rr = read(ctx->timeout_fd, &buf, sizeof(buf));
+	if (rr == -1) {
+		return EXIT_FAILURE;
+	}
+
+	ctx->running = 0;
+	return EXIT_SUCCESS;
+}
+
 static int context_handle_event(struct ping_context *ctx,
 				struct epoll_event const *ev)
 {
@@ -709,6 +761,8 @@ static int context_handle_event(struct ping_context *ctx,
 		return context_handle_timer(ctx);
 	} else if (fd == ctx->signal_fd) {
 		return context_handle_signal(ctx);
+	} else if (fd == ctx->timeout_fd) {
+		return context_handle_timeout(ctx);
 	} else {
 		ERR("unhandled file descriptor: %d", fd);
 		return EXIT_FAILURE;

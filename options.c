@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 16:46:50 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 13:24:30 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -190,6 +190,27 @@ static int opt_linger(struct options *opts, char const *value)
 	return EXIT_SUCCESS;
 }
 
+static int opt_timeout(struct options *opts, char const *value)
+{
+	long double timeout;
+	char *end;
+
+	timeout = strtold(value, &end);
+	if (end == value || *end != '\0') {
+		ERR("timeout: %s: invalid value", value);
+		return EXIT_FAILURE;
+	}
+
+	if (timeout < 0) {
+		ERR("timeout: value too big");
+		return EXIT_FAILURE;
+	}
+
+	opts->timeout.tv_nsec = (long)(fmod(timeout, 1.0) * 1e9);
+	opts->timeout.tv_sec = (time_t)(timeout - fmod(timeout, 1.0));
+	return EXIT_SUCCESS;
+}
+
 static int opt_help(struct options *opts, char const *value)
 {
 	(void)value;
@@ -270,6 +291,14 @@ static struct option_table const OPTION_TABLE[] = {
 		.handler = opt_verbose,
 		.param_name = NULL,
 		.description = "verbose output",
+	},
+	{
+		.name_long = "timeout",
+		.name_short = 'w',
+		.value_required = 1,
+		.handler = opt_timeout,
+		.param_name = "N",
+		.description = "stop after N seconds of sending packets",
 	},
 	{
 		.name_long = "linger",
@@ -466,6 +495,10 @@ static struct options const OPTS_DEFAULT = {
 		.tv_nsec = 0,
 	},
 	.linger = {
+		.tv_sec = 0,
+		.tv_nsec = 0,
+	},
+	.timeout = {
 		.tv_sec = 0,
 		.tv_nsec = 0,
 	},
