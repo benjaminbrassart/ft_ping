@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 15:17:49 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:40:23 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -177,7 +177,7 @@ static int opt_size(struct options *opts, char const *value)
 		return EXIT_FAILURE;
 	}
 
-	if (size > UINT16_MAX) {
+	if (size > MAX_PAYLOAD_SIZE) {
 		ERR("size: value too big");
 		return EXIT_FAILURE;
 	}

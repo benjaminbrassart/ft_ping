@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:00:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 15:07:20 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:42:21 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,7 @@
 	}
 
 #define DEFAULT_PAYLOAD_SIZE 56
+#define MAX_PAYLOAD_SIZE 65399
 
 struct options {
 	OPTIONAL(size_t) count;
