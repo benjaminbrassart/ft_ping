@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:11:15 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 16:25:16 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:29:59 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -93,7 +93,18 @@ char const *icmp_code_tostring(uint8_t type, uint8_t code)
 		return "Source quench";
 
 	case ICMP_REDIRECT:
-		return "Redirected";
+		switch (code) {
+		case ICMP_REDIRECT_NET:
+			return "Redirect Network";
+		case ICMP_REDIRECT_HOST:
+			return "Redirect Host";
+		case ICMP_REDIRECT_TOSNET:
+			return "Redirect Type of Service and Network";
+		case ICMP_REDIRECT_TOSHOST:
+			return "Redirect Type of Service and Host";
+		default:
+			return NULL;
+		}
 
 	case ICMP_TIME_EXCEEDED:
 		return "Time to live exceeded";
