@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 15:10:38 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 15:17:49 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -352,21 +352,6 @@ static struct option_table const OPTION_TABLE[] = {
 		.description = "give this help list",
 	},
 };
-
-/*
-Possible options:
-      --ttl <N>
-  -c, --count <N>
-  -d, --debug
-  -i, --interval <N>
-  -p, --pattern <PATTERN>
-  -q, --quiet
-  -r, --routing-ignore
-  -s, --size <N>
-  -v, --verbose
-  -W, --linger <N>
-  -?, --help
-*/
 
 static unsigned opt_equals(char const arg[], char const opt[])
 {
