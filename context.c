@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 16:02:05 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:08:50 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -156,6 +156,22 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 				       &opts->tos.value,
 				       sizeof(opts->tos.value)) == -1) {
 				ERR("failed to set TOS: %m");
+				break;
+			}
+		}
+
+		if (opts->debug) {
+			if (setsockopt(sock_fd, SOL_SOCKET, SO_DEBUG,
+				       (int[1]){ 1 }, sizeof(int)) == -1) {
+				ERR("failed to set SO_DEBUG option: %m");
+				break;
+			}
+		}
+
+		if (opts->routing_ignore) {
+			if (setsockopt(sock_fd, SOL_SOCKET, SO_DONTROUTE,
+				       (int[1]){ 1 }, sizeof(int)) == -1) {
+				ERR("failed to set SO_DONTROUTE option: %m");
 				break;
 			}
 		}
@@ -326,11 +342,26 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 
 void context_free(struct ping_context *ctx)
 {
-	close(ctx->sock_fd);
-	close(ctx->timeout_fd);
-	close(ctx->signal_fd);
-	close(ctx->timer_fd);
-	close(ctx->epoll_fd);
+	if (ctx->sock_fd != -1) {
+		close(ctx->sock_fd);
+	}
+
+	if (ctx->timeout_fd != -1) {
+		close(ctx->timeout_fd);
+	}
+
+	if (ctx->signal_fd != -1) {
+		close(ctx->signal_fd);
+	}
+
+	if (ctx->timer_fd != -1) {
+		close(ctx->timer_fd);
+	}
+
+	if (ctx->epoll_fd != -1) {
+		close(ctx->epoll_fd);
+	}
+
 	free(ctx->payload);
 
 	struct packet_list_node *it = ctx->packets.begin;
@@ -473,6 +504,7 @@ static int send_ping(struct ping_context *ctx)
 
 	sc = sendmsg(ctx->sock_fd, &msg, 0);
 	if (sc == -1) {
+		ERR("sending packet: %m");
 		free(node);
 		return EXIT_FAILURE;
 	}
