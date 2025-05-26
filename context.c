@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 15:45:50 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 15:58:42 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -588,11 +588,16 @@ static void dump_icmp(struct icmphdr const *icmp, uint16_t data_size)
 #undef FMT_SEQ
 }
 
+static double timespec_to_seconds(struct timespec const *t)
+{
+	return (t->tv_sec * 1e3) + (t->tv_nsec / 1e6);
+}
+
 static double timespec_diff(struct timespec const *t1,
 			    struct timespec const *t2)
 {
-	double n1 = (t1->tv_sec * 1e3) + (t1->tv_nsec / 1e6);
-	double n2 = (t2->tv_sec * 1e3) + (t2->tv_nsec / 1e6);
+	double n1 = timespec_to_seconds(t1);
+	double n2 = timespec_to_seconds(t2);
 
 	return n1 > n2 ? n1 - n2 : n2 - n1;
 }
@@ -640,6 +645,16 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 
 		double time_diff =
 			timespec_diff(&node->sent_at, &node->received_at);
+
+		if (ctx->opts->linger.present) {
+			double max_diff =
+				timespec_to_seconds(&ctx->opts->linger.value);
+			printf("max diff = %f\n", max_diff);
+
+			if (time_diff > max_diff) {
+				return EXIT_SUCCESS;
+			}
+		}
 
 		if (!ctx->opts->quiet) {
 			printf("%zu bytes from %s: icmp_seq=%hu ttl=%hhu time=%.3f ms",
