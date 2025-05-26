@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:00:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 13:44:00 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 15:07:20 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,7 +25,6 @@
 #define DEFAULT_PAYLOAD_SIZE 56
 
 struct options {
-	OPTIONAL(uint8_t) ttl;
 	OPTIONAL(size_t) count;
 	unsigned debug : 1;
 	unsigned help : 1;
@@ -36,6 +35,8 @@ struct options {
 	unsigned quiet : 1;
 	unsigned routing_ignore : 1;
 	OPTIONAL(size_t) size;
+	OPTIONAL(uint8_t) ttl;
+	OPTIONAL(uint8_t) tos;
 	unsigned verbose : 1;
 	char const **hostnames;
 	size_t hostname_count;

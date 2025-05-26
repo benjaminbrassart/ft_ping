@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 15:03:43 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 15:09:20 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -146,6 +146,15 @@ int context_create(struct ping_context *ctx, struct options const *opts,
 				       &opts->ttl.value,
 				       sizeof(opts->ttl.value)) == -1) {
 				ERR("failed to set TTL: %m");
+				break;
+			}
+		}
+
+		if (opts->tos.present) {
+			if (setsockopt(sock_fd, IPPROTO_IP, IP_TOS,
+				       &opts->tos.value,
+				       sizeof(opts->tos.value)) == -1) {
+				ERR("failed to set TOS: %m");
 				break;
 			}
 		}
@@ -806,6 +815,7 @@ int context_execute(struct ping_context *ctx)
 
 	ctx->finished = 0;
 	ctx->total_recv_count = 0;
+
 	print_init_message(ctx);
 
 	while (ctx->running && !ctx->finished) {

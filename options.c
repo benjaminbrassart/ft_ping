@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 13:46:33 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 15:10:38 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,6 +65,27 @@ static int opt_ttl(struct options *opts, char const *value)
 
 	opts->ttl.present = 1;
 	opts->ttl.value = (uint8_t)ttl;
+	return EXIT_SUCCESS;
+}
+
+static int opt_tos(struct options *opts, char const *value)
+{
+	char *end;
+	uintmax_t tos;
+
+	tos = strtoumax(value, &end, 10);
+	if (end == value || *end != '\0') {
+		ERR("tos: %s: invalid value", value);
+		return EXIT_FAILURE;
+	}
+
+	if (tos > UINT8_MAX) {
+		ERR("tos: value too big");
+		return EXIT_FAILURE;
+	}
+
+	opts->tos.present = 1;
+	opts->tos.value = (uint8_t)tos;
 	return EXIT_SUCCESS;
 }
 
@@ -226,14 +247,6 @@ static int opt_help(struct options *opts, char const *value)
 
 static struct option_table const OPTION_TABLE[] = {
 	{
-		.name_long = "ttl",
-		.name_short = '\0',
-		.value_required = 1,
-		.handler = opt_ttl,
-		.param_name = "N",
-		.description = "specify N as time-to-live",
-	},
-	{
 		.name_long = "count",
 		.name_short = 'c',
 		.value_required = 1,
@@ -289,6 +302,22 @@ static struct option_table const OPTION_TABLE[] = {
 		.handler = opt_size,
 		.param_name = "NUMBER",
 		.description = "send NUMBER data octets",
+	},
+	{
+		.name_long = "ttl",
+		.name_short = '\0',
+		.value_required = 1,
+		.handler = opt_ttl,
+		.param_name = "N",
+		.description = "specify N as time-to-live",
+	},
+	{
+		.name_long = "tos",
+		.name_short = 'T',
+		.value_required = 1,
+		.handler = opt_tos,
+		.param_name = "NUM",
+		.description = "set type of service (TOS) to NUM",
 	},
 	{
 		.name_long = "verbose",
@@ -492,7 +521,6 @@ static int opts_parse_next(struct opt_parser *parser)
 }
 
 static struct options const OPTS_DEFAULT = {
-	.ttl = { .present = 0 },
 	.count = { .present = 0 },
 	.debug = 0,
 	.help = 0,
@@ -503,6 +531,8 @@ static struct options const OPTS_DEFAULT = {
 	.quiet = 0,
 	.routing_ignore = 0,
 	.size = {.present = 0,},
+	.ttl = { .present = 0 },
+	.tos = {.present=0},
 	.verbose = 0,
 	.hostnames = NULL,
 };
