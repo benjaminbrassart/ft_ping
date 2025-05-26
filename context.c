@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 16:23:12 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:25:32 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -503,7 +503,7 @@ static int send_ping(struct ping_context *ctx)
 		.msg_namelen = sizeof(ctx->addr),
 	};
 
-	icmp.checksum = compute_icmp_checksum(&msg);
+	icmp.checksum = compute_icmp_checksum(msg.msg_iov, msg.msg_iovlen);
 
 	ssize_t sc;
 

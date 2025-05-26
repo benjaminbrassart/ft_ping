@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:11:15 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/21 15:38:22 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:25:16 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,12 +17,12 @@
 
 #include <netinet/ip_icmp.h>
 
-uint16_t compute_icmp_checksum(struct msghdr const *msg)
+uint16_t compute_icmp_checksum(struct iovec const iovs[], size_t iovs_len)
 {
 	uint32_t sum = 0;
 
-	for (size_t i = 0; i < msg->msg_iovlen; i++) {
-		struct iovec const *iov = &msg->msg_iov[i];
+	for (size_t i = 0; i < iovs_len; i++) {
+		struct iovec const *iov = &iovs[i];
 		uint8_t const *data = iov->iov_base;
 		size_t len = iov->iov_len;
 
