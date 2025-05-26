@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 16:25:32 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:45:11 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -745,8 +745,6 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 		if (orig_icmp->un.echo.id != (uint16_t)ctx->pid) {
 			return EXIT_SUCCESS;
 		}
-
-		DBG("message for me! type %d code %d", icmp->type, icmp->code);
 
 		char const *message =
 			icmp_code_tostring(icmp->type, icmp->code);

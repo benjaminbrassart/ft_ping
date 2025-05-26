@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/17 17:01:59 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 16:40:23 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/26 16:45:05 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -399,13 +399,9 @@ static struct option_table const *opt_get_short(char c)
 static struct option_table const *opt_get_long(char const name[])
 {
 	for (size_t i = 0; i < sizeof_array(OPTION_TABLE); i += 1) {
-		DBG("checking opt -%c --%s", OPTION_TABLE[i].name_short,
-		    OPTION_TABLE[i].name_long);
 		if (opt_equals(name, OPTION_TABLE[i].name_long)) {
-			DBG("Yes!");
 			return &OPTION_TABLE[i];
 		}
-		DBG("nop!");
 	}
 
 	return NULL;
@@ -416,11 +412,8 @@ static int opts_parse_next(struct opt_parser *parser)
 	char const *arg = argit_peek(&parser->it);
 
 	if (arg == NULL) {
-		DBG("end");
 		return -1;
 	}
-
-	DBG("arg = %s, accept = %d", arg, parser->accept_opt);
 
 	if (!parser->accept_opt || arg[0] != '-' || arg[1] == '\0') {
 		argit_advance(&parser->it);
@@ -428,9 +421,7 @@ static int opts_parse_next(struct opt_parser *parser)
 	}
 
 	if (arg[1] == '-') { // long option
-		DBG("long option");
 		if (arg[2] == '\0') {
-			DBG("we no longer accept options");
 			parser->accept_opt = 0;
 			return EXIT_SUCCESS;
 		}
@@ -442,12 +433,8 @@ static int opts_parse_next(struct opt_parser *parser)
 			return EXIT_FAILURE;
 		}
 
-		DBG("got option -%c --%s", entry->name_short, entry->name_long);
-
 		char const *value =
 			opt_get_value(parser, arg, entry->value_required);
-
-		DBG("option value = %s", value);
 
 		if (entry->value_required && value == NULL) {
 			ERR("option '--%s' requires an argument",
@@ -531,12 +518,10 @@ int opts_parse(int argc, char const *argv[], struct options *opt_out)
 	};
 	int res;
 
-	DBG("init");
 	argit_init(&parser.it, argc, argv);
 	argit_advance(&parser.it);
 
 	for (;;) {
-		DBG("next arg");
 		res = opts_parse_next(&parser);
 		if (res == EXIT_SUCCESS) {
 			continue;
