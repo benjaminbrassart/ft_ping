@@ -6,7 +6,7 @@
 /*   By: bbrassar <bbrassar@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/05/18 12:16:28 by bbrassar          #+#    #+#             */
-/*   Updated: 2025/05/26 17:12:55 by bbrassar         ###   ########.fr       */
+/*   Updated: 2025/05/27 16:45:41 by bbrassar         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -708,7 +708,6 @@ static int handle_raw_packet(struct ping_context *ctx, uint8_t const *raw,
 		if (ctx->opts->linger.present) {
 			double max_diff =
 				timespec_to_seconds(&ctx->opts->linger.value);
-			printf("max diff = %f\n", max_diff);
 
 			if (time_diff > max_diff) {
 				return EXIT_SUCCESS;
